@@ -24,3 +24,5 @@ __pycache__/
 /frontend/package-lock.json
 *.compiled.js
 package-lock.json
+.vercel
+frontend/.env.local
