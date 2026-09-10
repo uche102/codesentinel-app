@@ -242,12 +242,13 @@ export async function POST(request: Request) {
 }
 
 function nodeIsBlob(path: string, type?: string) {
-  if (!path) return false;
-  return (
-    type === "blob" ||
-    /\.[A-Za-z0-9]+$/.test(path) ||
-    /(^|\/)[A-Za-z0-9_.-]+$/.test(path)
-  );
+  if (!path || path.endsWith("/")) return false;
+
+  if (type && type !== "blob") {
+    return false;
+  }
+
+  return /\.[A-Za-z0-9]+$/.test(path);
 }
 
 function nodeTypeFromTree(
