@@ -43,14 +43,18 @@ const maturityClassName: Record<ProjectMaturity, string> = {
   production_ready: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200",
 };
 
-const defaultForm: ProjectData = {
-  name: "",
-  has_readme: true,
-  has_tests: true,
-  has_ci: false,
-  file_count: 120,
-  test_file_count: 24,
-};
+function createEmptyProjectForm(): ProjectData {
+  return {
+    name: "",
+    has_readme: false,
+    has_tests: false,
+    has_ci: false,
+    file_count: 0,
+    test_file_count: 0,
+  };
+}
+
+const defaultForm: ProjectData = createEmptyProjectForm();
 
 function normalizeProjectData(form: ProjectData): ProjectData {
   return {
@@ -207,6 +211,12 @@ export function CodeSentinelDashboard() {
     useState<FeePresetLevel>("standard");
   const [assessment, setAssessment] = useState<ProjectAssessment | null>(null);
 
+  const resetRepoInspectionState = () => {
+    setAssessment(null);
+    setRepoSummary(null);
+    setForm(createEmptyProjectForm());
+  };
+
   const evidenceSummary = useMemo(
     () => [
       { label: "README", value: form.has_readme ? "Present" : "Missing" },
@@ -233,7 +243,7 @@ export function CodeSentinelDashboard() {
     }
 
     setIsInspectingRepo(true);
-    setRepoSummary(null);
+    resetRepoInspectionState();
 
     try {
       const response = await fetch("/api/github/analyze", {
