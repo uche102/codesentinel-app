@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bot,
@@ -210,6 +210,7 @@ export function CodeSentinelDashboard() {
   const [feePresetLevel, setFeePresetLevel] =
     useState<FeePresetLevel>("standard");
   const [assessment, setAssessment] = useState<ProjectAssessment | null>(null);
+  const latestInspectRequestRef = useRef(0);
 
   const resetRepoInspectionState = () => {
     setAssessment(null);
@@ -241,6 +242,9 @@ export function CodeSentinelDashboard() {
       error("GitHub URL is required");
       return;
     }
+
+    const requestId = latestInspectRequestRef.current + 1;
+    latestInspectRequestRef.current = requestId;
 
     setIsInspectingRepo(true);
     resetRepoInspectionState();
@@ -275,6 +279,10 @@ export function CodeSentinelDashboard() {
         const message =
           payload && "error" in payload ? payload.error : undefined;
         throw new Error(message || "Unable to inspect GitHub repository.");
+      }
+
+      if (requestId !== latestInspectRequestRef.current) {
+        return;
       }
 
       if (!payload || !("projectData" in payload)) {

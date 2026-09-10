@@ -244,11 +244,16 @@ export async function POST(request: Request) {
 function nodeIsBlob(path: string, type?: string) {
   if (!path || path.endsWith("/")) return false;
 
-  if (type && type !== "blob") {
-    return false;
+  if (type) {
+    return type === "blob";
   }
 
-  return /\.[A-Za-z0-9]+$/.test(path);
+  return (
+    /\.[A-Za-z0-9]+$/.test(path) ||
+    /(^|\/)(Dockerfile|Dockerfile\.[A-Za-z0-9]+|LICENSE|Makefile|NOTICE|README|CHANGELOG|AUTHORS|VERSION|SECURITY|CONTRIBUTING|CODEOWNERS|\.env|\.gitignore|Procfile|Rakefile|Gemfile|Pipfile|requirements|pyproject|package|Cargo\.toml|go\.mod|pom\.xml|tsconfig|next\.config)$/.test(
+      path,
+    )
+  );
 }
 
 function nodeTypeFromTree(
