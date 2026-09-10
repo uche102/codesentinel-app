@@ -26,6 +26,7 @@ import type {
   ProjectMaturity,
 } from "@/lib/contracts/types";
 import { useWallet } from "@/lib/genlayer/wallet";
+import { readJsonResponse } from "@/lib/github/response";
 import { error, success } from "@/lib/utils/toast";
 
 const maturityLabels: Record<ProjectMaturity, string> = {
@@ -240,16 +241,33 @@ export function CodeSentinelDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repoUrl }),
       });
-      const payload = (await response.json()) as
-        | GithubRepoAnalysis
-        | { error?: string };
+
+      let payload: GithubRepoAnalysis | { error?: string } | null = null;
+
+      try {
+        payload = (await readJsonResponse(response)) as
+          | GithubRepoAnalysis
+          | { error?: string }
+          | null;
+      } catch (error) {
+        if (!response.ok) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Unable to inspect GitHub repository.";
+          throw new Error(message);
+        }
+
+        throw error;
+      }
 
       if (!response.ok) {
-        const message = "error" in payload ? payload.error : undefined;
+        const message =
+          payload && "error" in payload ? payload.error : undefined;
         throw new Error(message || "Unable to inspect GitHub repository.");
       }
 
-      if (!("projectData" in payload)) {
+      if (!payload || !("projectData" in payload)) {
         throw new Error("GitHub response did not include project evidence.");
       }
 

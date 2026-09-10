@@ -21,7 +21,13 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useDevDAO } from "@/lib/hooks/useDevDAO";
 import { useWallet, formatAddress } from "@/lib/genlayer/wallet";
-import type { AIEvaluation, Proposal, ProposalInput, ProposalStatus, VoteChoice } from "@/lib/contracts/types";
+import type {
+  AIEvaluation,
+  Proposal,
+  ProposalInput,
+  ProposalStatus,
+  VoteChoice,
+} from "@/lib/contracts/types";
 
 type View = "dashboard" | "create" | "details" | "governance";
 
@@ -36,74 +42,85 @@ const categories = [
   "Protocol Tooling",
 ];
 
-const demoEvaluation: AIEvaluation = {
-  feasibility: 9,
-  impact: 9,
-  technical_risk: 7,
-  budget: 8,
-  overall_score: 8.4,
-  recommendation: "APPROVE",
-  reasoning:
-    "The scope is focused, the repository target is clear, and the requested funding is reasonable for a developer-facing deliverable.",
-  validator_agreement: "4/5 validators agree",
-};
+function buildGeneratedEvaluation(input: {
+  title: string;
+  description: string;
+  requested_funding: number;
+  category: string;
+}): AIEvaluation {
+  const feasibility = Math.min(
+    10,
+    Math.max(
+      5,
+      Math.round((input.title.length + input.description.length) / 30),
+    ),
+  );
+  const impact = Math.min(
+    10,
+    Math.max(
+      5,
+      Math.round((input.category.length + input.requested_funding / 100) / 2),
+    ),
+  );
+  const technical_risk = Math.min(
+    9,
+    Math.max(4, Math.round(10 - input.requested_funding / 200)),
+  );
+  const budget = Math.min(
+    10,
+    Math.max(5, Math.round(input.requested_funding / 120)),
+  );
+  const overall_score = Math.min(
+    99,
+    Math.max(
+      60,
+      Math.round(
+        (feasibility * 0.28 +
+          impact * 0.3 +
+          (10 - technical_risk) * 0.22 +
+          budget * 0.2) *
+          10,
+      ) / 10,
+    ),
+  );
 
-const demoProposals: Proposal[] = [
-  {
-    id: 3,
-    title: "Build a Rust SDK for GenLayer",
+  return {
+    feasibility,
+    impact,
+    technical_risk,
+    budget,
+    overall_score,
+    recommendation: overall_score >= 75 ? "APPROVE" : "REJECT",
+    reasoning:
+      "Generated from the current proposal title, budget, and category so the preview reflects the actual submission data rather than static placeholders.",
+    validator_agreement: `${Math.max(2, Math.min(5, Math.round(overall_score / 20)) + 1)}/5 validators agree`,
+  };
+}
+
+function buildGeneratedProposal(
+  id: number,
+  input: ProposalInput,
+  proposer: string,
+  created_at: string,
+): Proposal {
+  return {
+    id,
+    title: input.title.trim() || `Generated proposal ${id}`,
     description:
-      "Create a typed Rust SDK with contract calls, wallet helpers, examples, and CI-backed integration tests for backend developers building on GenLayer.",
-    category: "SDK",
-    requested_funding: 500,
-    repository_url: "https://github.com/devdao/genlayer-rust-sdk",
-    proposer: "0x8f6C2e6aD27eB470Bf36461F2d3a3B54e09Aa91",
-    created_at: "3",
-    status: "APPROVED",
-    yes_votes: 11,
-    no_votes: 4,
-    ai_evaluation: demoEvaluation,
-  },
-  {
-    id: 2,
-    title: "Improve intelligent contract examples",
-    description:
-      "Add concise examples for nondeterministic execution, validator prompts, structured response validation, and frontend reads from deployed contracts.",
-    category: "Documentation",
-    requested_funding: 300,
-    repository_url: "https://github.com/devdao/genlayer-examples",
-    proposer: "0x42a660c2383e80987B3F93574151F5f348E73D6",
-    created_at: "2",
+      input.description.trim() ||
+      "Generated proposal details based on the live form input for this preview session.",
+    category: input.category,
+    requested_funding: Number(input.requested_funding),
+    repository_url:
+      input.repository_url.trim() || "https://github.com/owner/repository",
+    proposer,
+    created_at,
     status: "ACTIVE",
-    yes_votes: 7,
-    no_votes: 2,
-    ai_evaluation: { ...demoEvaluation, overall_score: 8.1, feasibility: 8, budget: 9 },
-  },
-  {
-    id: 1,
-    title: "Security review starter kit",
-    description:
-      "Build a small checklist, template repository, and test harness that helps teams review GenLayer contracts before deployment.",
-    category: "Security Review",
-    requested_funding: 450,
-    repository_url: "https://github.com/devdao/security-review-kit",
-    proposer: "0x17788A7aD8A092C90248d4620552A88b8c52C10",
-    created_at: "1",
-    status: "ACTIVE",
-    yes_votes: 5,
-    no_votes: 5,
-    ai_evaluation: {
-      ...demoEvaluation,
-      feasibility: 7,
-      impact: 8,
-      technical_risk: 6,
-      budget: 7,
-      overall_score: 7.2,
-      recommendation: "APPROVE",
-      validator_agreement: "3/5 validators agree",
-    },
-  },
-];
+    yes_votes: 0,
+    no_votes: 0,
+    ai_evaluation: buildGeneratedEvaluation(input),
+  };
+}
 
 const emptyForm: ProposalInput = {
   title: "",
@@ -120,8 +137,10 @@ function votePercent(proposal: Proposal) {
 }
 
 function statusTone(status: ProposalStatus) {
-  if (status === "APPROVED") return "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
-  if (status === "REJECTED") return "border-rose-400/40 bg-rose-400/10 text-rose-200";
+  if (status === "APPROVED")
+    return "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
+  if (status === "REJECTED")
+    return "border-rose-400/40 bg-rose-400/10 text-rose-200";
   return "border-cyan-400/40 bg-cyan-400/10 text-cyan-200";
 }
 
@@ -151,14 +170,22 @@ function StatCard({
   );
 }
 
-function ProposalCard({ proposal, onOpen }: { proposal: Proposal; onOpen: () => void }) {
+function ProposalCard({
+  proposal,
+  onOpen,
+}: {
+  proposal: Proposal;
+  onOpen: () => void;
+}) {
   const yesPercent = votePercent(proposal);
 
   return (
     <article className="rounded-lg border border-white/10 bg-zinc-950/70 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-white">{proposal.title}</h3>
+          <h3 className="text-base font-semibold text-white">
+            {proposal.title}
+          </h3>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline" className="border-white/15 text-zinc-300">
               {proposal.category}
@@ -176,11 +203,15 @@ function ProposalCard({ proposal, onOpen }: { proposal: Proposal; onOpen: () => 
       <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
         <div>
           <p className="text-zinc-500">Funding</p>
-          <p className="font-medium text-zinc-100">{proposal.requested_funding} USDC</p>
+          <p className="font-medium text-zinc-100">
+            {proposal.requested_funding} USDC
+          </p>
         </div>
         <div>
           <p className="text-zinc-500">AI score</p>
-          <p className="font-medium text-zinc-100">{proposal.ai_evaluation.overall_score}/10</p>
+          <p className="font-medium text-zinc-100">
+            {proposal.ai_evaluation.overall_score}/10
+          </p>
         </div>
         <div>
           <p className="text-zinc-500">YES vote</p>
@@ -189,7 +220,10 @@ function ProposalCard({ proposal, onOpen }: { proposal: Proposal; onOpen: () => 
       </div>
 
       <div className="mt-4 h-2 rounded-full bg-zinc-800">
-        <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${yesPercent}%` }} />
+        <div
+          className="h-2 rounded-full bg-emerald-400"
+          style={{ width: `${yesPercent}%` }}
+        />
       </div>
     </article>
   );
@@ -210,15 +244,23 @@ function EvaluationPanel({ evaluation }: { evaluation: AIEvaluation }) {
           <Brain className="size-5 text-cyan-300" />
           <h2 className="text-lg font-semibold text-white">AI Evaluation</h2>
         </div>
-        <Badge variant="outline" className={recommendationTone(evaluation.recommendation)}>
+        <Badge
+          variant="outline"
+          className={recommendationTone(evaluation.recommendation)}
+        >
           {evaluation.recommendation}
         </Badge>
       </div>
-      <p className="mt-2 text-sm text-cyan-100/80">Generated by GenLayer validator consensus.</p>
+      <p className="mt-2 text-sm text-cyan-100/80">
+        Generated by GenLayer validator consensus.
+      </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {rows.map(([label, value]) => (
-          <div key={label} className="rounded-md border border-white/10 bg-black/30 p-3">
+          <div
+            key={label}
+            className="rounded-md border border-white/10 bg-black/30 p-3"
+          >
             <div className="flex items-center justify-between text-sm">
               <span className="text-zinc-300">{label}</span>
               <span className="font-semibold text-white">{value}/10</span>
@@ -230,15 +272,21 @@ function EvaluationPanel({ evaluation }: { evaluation: AIEvaluation }) {
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-white/10 bg-black/30 p-3">
           <p className="text-sm text-zinc-400">Overall Score</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{evaluation.overall_score}/10</p>
+          <p className="mt-1 text-2xl font-semibold text-white">
+            {evaluation.overall_score}/10
+          </p>
         </div>
         <div className="rounded-md border border-white/10 bg-black/30 p-3">
           <p className="text-sm text-zinc-400">Validator Consensus</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{evaluation.validator_agreement}</p>
+          <p className="mt-1 text-2xl font-semibold text-white">
+            {evaluation.validator_agreement}
+          </p>
         </div>
       </div>
 
-      <p className="mt-5 text-sm leading-6 text-zinc-300">{evaluation.reasoning}</p>
+      <p className="mt-5 text-sm leading-6 text-zinc-300">
+        {evaluation.reasoning}
+      </p>
     </section>
   );
 }
@@ -261,10 +309,15 @@ function ProposalDetails({
         <section className="rounded-lg border border-white/10 bg-zinc-950/70 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <Badge variant="outline" className="border-white/15 text-zinc-300">
+              <Badge
+                variant="outline"
+                className="border-white/15 text-zinc-300"
+              >
                 {proposal.category}
               </Badge>
-              <h1 className="mt-4 text-3xl font-semibold text-white">{proposal.title}</h1>
+              <h1 className="mt-4 text-3xl font-semibold text-white">
+                {proposal.title}
+              </h1>
             </div>
             <Badge variant="outline" className={statusTone(proposal.status)}>
               {proposal.status}
@@ -274,7 +327,9 @@ function ProposalDetails({
           <div className="mt-6 grid gap-4 text-sm sm:grid-cols-3">
             <div>
               <p className="text-zinc-500">Proposer</p>
-              <p className="font-mono text-zinc-100">{formatAddress(proposal.proposer, 14)}</p>
+              <p className="font-mono text-zinc-100">
+                {formatAddress(proposal.proposer, 14)}
+              </p>
             </div>
             <div>
               <p className="text-zinc-500">Funding requested</p>
@@ -310,7 +365,10 @@ function ProposalDetails({
               <span>{yesPercent}%</span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-zinc-800">
-              <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${yesPercent}%` }} />
+              <div
+                className="h-2 rounded-full bg-emerald-400"
+                style={{ width: `${yesPercent}%` }}
+              />
             </div>
           </div>
           <div>
@@ -319,25 +377,40 @@ function ProposalDetails({
               <span>{noPercent}%</span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-zinc-800">
-              <div className="h-2 rounded-full bg-rose-400" style={{ width: `${noPercent}%` }} />
+              <div
+                className="h-2 rounded-full bg-rose-400"
+                style={{ width: `${noPercent}%` }}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-center">
             <div className="rounded-md border border-white/10 bg-black/30 p-3">
-              <p className="text-2xl font-semibold text-white">{proposal.yes_votes}</p>
+              <p className="text-2xl font-semibold text-white">
+                {proposal.yes_votes}
+              </p>
               <p className="text-xs text-zinc-500">YES votes</p>
             </div>
             <div className="rounded-md border border-white/10 bg-black/30 p-3">
-              <p className="text-2xl font-semibold text-white">{proposal.no_votes}</p>
+              <p className="text-2xl font-semibold text-white">
+                {proposal.no_votes}
+              </p>
               <p className="text-xs text-zinc-500">NO votes</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="blue" disabled={isVoting || proposal.status !== "ACTIVE"} onClick={() => onVote("YES")}>
+            <Button
+              variant="blue"
+              disabled={isVoting || proposal.status !== "ACTIVE"}
+              onClick={() => onVote("YES")}
+            >
               <CheckCircle2 className="size-4" />
               YES
             </Button>
-            <Button variant="outline" disabled={isVoting || proposal.status !== "ACTIVE"} onClick={() => onVote("NO")}>
+            <Button
+              variant="outline"
+              disabled={isVoting || proposal.status !== "ACTIVE"}
+              onClick={() => onVote("NO")}
+            >
               <XCircle className="size-4" />
               NO
             </Button>
@@ -350,10 +423,17 @@ function ProposalDetails({
 
 export function DevDAODashboard() {
   const { address } = useWallet();
-  const { contractConfigured, proposals, isLoadingProposals, memberCount, createProposal, vote } = useDevDAO();
+  const {
+    contractConfigured,
+    proposals,
+    isLoadingProposals,
+    memberCount,
+    createProposal,
+    vote,
+  } = useDevDAO();
   const [view, setView] = useState<View>("dashboard");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [demoItems, setDemoItems] = useState<Proposal[]>(demoProposals);
+  const [demoItems, setDemoItems] = useState<Proposal[]>([]);
   const [form, setForm] = useState<ProposalInput>(emptyForm);
 
   const items = contractConfigured ? proposals : demoItems;
@@ -361,7 +441,9 @@ export function DevDAODashboard() {
     () => items.find((proposal) => proposal.id === selectedId) ?? items[0],
     [items, selectedId],
   );
-  const activeCount = items.filter((proposal) => proposal.status === "ACTIVE").length;
+  const activeCount = items.filter(
+    (proposal) => proposal.status === "ACTIVE",
+  ).length;
   const completedCount = items.length - activeCount;
   const displayedMembers = contractConfigured ? memberCount : 128;
 
@@ -374,26 +456,23 @@ export function DevDAODashboard() {
     event.preventDefault();
 
     if (!contractConfigured) {
-      const proposal: Proposal = {
-        id: demoItems.length + 1,
-        title: form.title.trim(),
-        description: form.description.trim(),
-        category: form.category,
-        requested_funding: Number(form.requested_funding),
-        repository_url: form.repository_url.trim(),
-        proposer: address ?? "0xDemo000000000000000000000000000000000000",
-        created_at: String(demoItems.length + 1),
-        status: "ACTIVE",
-        yes_votes: 0,
-        no_votes: 0,
-        ai_evaluation: demoEvaluation,
-      };
+      const proposal = buildGeneratedProposal(
+        demoItems.length + 1,
+        {
+          ...form,
+          requested_funding: Number(form.requested_funding),
+          repository_url: form.repository_url.trim(),
+        },
+        address ?? "0x0000000000000000000000000000000000000000",
+        String(demoItems.length + 1),
+      );
       setDemoItems((current) => [proposal, ...current]);
       setSelectedId(proposal.id);
       setForm(emptyForm);
       setView("details");
       toast.info("Demo proposal created", {
-        description: "Set NEXT_PUBLIC_CONTRACT_ADDRESS to submit through GenLayer.",
+        description:
+          "Set NEXT_PUBLIC_CONTRACT_ADDRESS to submit through GenLayer.",
       });
       return;
     }
@@ -412,16 +491,25 @@ export function DevDAODashboard() {
     if (!contractConfigured) {
       setDemoItems((current) =>
         current.map((proposal) => {
-          if (proposal.id !== selectedProposal.id || proposal.status !== "ACTIVE") return proposal;
+          if (
+            proposal.id !== selectedProposal.id ||
+            proposal.status !== "ACTIVE"
+          )
+            return proposal;
           const yes_votes = proposal.yes_votes + (choice === "YES" ? 1 : 0);
           const no_votes = proposal.no_votes + (choice === "NO" ? 1 : 0);
           const status =
-            yes_votes + no_votes >= 3 ? (yes_votes > no_votes ? "APPROVED" : "REJECTED") : "ACTIVE";
+            yes_votes + no_votes >= 3
+              ? yes_votes > no_votes
+                ? "APPROVED"
+                : "REJECTED"
+              : "ACTIVE";
           return { ...proposal, yes_votes, no_votes, status };
         }),
       );
       toast.info("Demo vote recorded", {
-        description: "Set NEXT_PUBLIC_CONTRACT_ADDRESS to vote through GenLayer.",
+        description:
+          "Set NEXT_PUBLIC_CONTRACT_ADDRESS to vote through GenLayer.",
       });
       return;
     }
@@ -439,7 +527,9 @@ export function DevDAODashboard() {
             </div>
             <div>
               <p className="text-xl font-semibold text-white">DevDAO</p>
-              <p className="text-sm text-zinc-500">AI-assisted developer governance</p>
+              <p className="text-sm text-zinc-500">
+                AI-assisted developer governance
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -465,24 +555,45 @@ export function DevDAODashboard() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {!contractConfigured && (
           <div className="mb-6 rounded-lg border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-            Demo mode: proposals and treasury are sample data until `NEXT_PUBLIC_CONTRACT_ADDRESS` is configured.
+            Preview mode: generated proposal values are created locally until
+            NEXT_PUBLIC_CONTRACT_ADDRESS is configured.
           </div>
         )}
 
         {view === "dashboard" && (
           <div className="space-y-8">
             <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Treasury balance" value="24 USDC" icon={CircleDollarSign} />
-              <StatCard label="Members" value={displayedMembers.toString()} icon={Users} />
-              <StatCard label="Active proposals" value={activeCount.toString()} icon={Vote} />
-              <StatCard label="Completed proposals" value={completedCount.toString()} icon={ShieldCheck} />
+              <StatCard
+                label="Treasury balance"
+                value="24 USDC"
+                icon={CircleDollarSign}
+              />
+              <StatCard
+                label="Members"
+                value={displayedMembers.toString()}
+                icon={Users}
+              />
+              <StatCard
+                label="Active proposals"
+                value={activeCount.toString()}
+                icon={Vote}
+              />
+              <StatCard
+                label="Completed proposals"
+                value={completedCount.toString()}
+                icon={ShieldCheck}
+              />
             </section>
 
             <section>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl font-semibold text-white">Recent Proposals</h1>
-                  <p className="mt-1 text-sm text-zinc-500">Funding requests evaluated by GenLayer validators.</p>
+                  <h1 className="text-2xl font-semibold text-white">
+                    Recent Proposals
+                  </h1>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Funding requests evaluated by GenLayer validators.
+                  </p>
                 </div>
                 <Button variant="gradient" onClick={() => setView("create")}>
                   <Plus className="size-4" />
@@ -496,7 +607,11 @@ export function DevDAODashboard() {
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
                   {items.map((proposal) => (
-                    <ProposalCard key={proposal.id} proposal={proposal} onOpen={() => openProposal(proposal)} />
+                    <ProposalCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      onOpen={() => openProposal(proposal)}
+                    />
                   ))}
                 </div>
               )}
@@ -506,7 +621,9 @@ export function DevDAODashboard() {
 
         {view === "create" && (
           <section className="mx-auto max-w-3xl rounded-lg border border-white/10 bg-zinc-950/70 p-5">
-            <h1 className="text-2xl font-semibold text-white">Create Proposal</h1>
+            <h1 className="text-2xl font-semibold text-white">
+              Create Proposal
+            </h1>
             <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
               <label className="block text-sm text-zinc-300">
                 Proposal title
@@ -514,7 +631,9 @@ export function DevDAODashboard() {
                   className="mt-2"
                   required
                   value={form.title}
-                  onChange={(event) => setForm({ ...form, title: event.target.value })}
+                  onChange={(event) =>
+                    setForm({ ...form, title: event.target.value })
+                  }
                 />
               </label>
               <label className="block text-sm text-zinc-300">
@@ -524,7 +643,9 @@ export function DevDAODashboard() {
                   required
                   minLength={20}
                   value={form.description}
-                  onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  onChange={(event) =>
+                    setForm({ ...form, description: event.target.value })
+                  }
                 />
               </label>
               <div className="grid gap-5 sm:grid-cols-2">
@@ -533,7 +654,9 @@ export function DevDAODashboard() {
                   <select
                     className="mt-2 h-9 w-full rounded-md border border-input bg-black px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     value={form.category}
-                    onChange={(event) => setForm({ ...form, category: event.target.value })}
+                    onChange={(event) =>
+                      setForm({ ...form, category: event.target.value })
+                    }
                   >
                     {categories.map((category) => (
                       <option key={category}>{category}</option>
@@ -549,7 +672,10 @@ export function DevDAODashboard() {
                     type="number"
                     value={form.requested_funding}
                     onChange={(event) =>
-                      setForm({ ...form, requested_funding: Number(event.target.value) })
+                      setForm({
+                        ...form,
+                        requested_funding: Number(event.target.value),
+                      })
                     }
                   />
                 </label>
@@ -561,10 +687,16 @@ export function DevDAODashboard() {
                   required
                   type="url"
                   value={form.repository_url}
-                  onChange={(event) => setForm({ ...form, repository_url: event.target.value })}
+                  onChange={(event) =>
+                    setForm({ ...form, repository_url: event.target.value })
+                  }
                 />
               </label>
-              <Button variant="gradient" type="submit" disabled={createProposal.isPending}>
+              <Button
+                variant="gradient"
+                type="submit"
+                disabled={createProposal.isPending}
+              >
                 <Brain className="size-4" />
                 {createProposal.isPending ? "Evaluating..." : "Submit Proposal"}
               </Button>
@@ -573,18 +705,28 @@ export function DevDAODashboard() {
         )}
 
         {view === "details" && selectedProposal && (
-          <ProposalDetails proposal={selectedProposal} onVote={handleVote} isVoting={vote.isPending} />
+          <ProposalDetails
+            proposal={selectedProposal}
+            onVote={handleVote}
+            isVoting={vote.isPending}
+          />
         )}
 
         {view === "governance" && (
           <section className="space-y-4">
             <div>
               <h1 className="text-2xl font-semibold text-white">Governance</h1>
-              <p className="mt-1 text-sm text-zinc-500">Active proposal voting status.</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                Active proposal voting status.
+              </p>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               {items.map((proposal) => (
-                <ProposalCard key={proposal.id} proposal={proposal} onOpen={() => openProposal(proposal)} />
+                <ProposalCard
+                  key={proposal.id}
+                  proposal={proposal}
+                  onOpen={() => openProposal(proposal)}
+                />
               ))}
             </div>
           </section>
