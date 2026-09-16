@@ -168,6 +168,11 @@ class CodeSentinel {
       } satisfies ProjectAssessment;
     };
 
+    const searchMap = (value: Map<unknown, unknown>) => {
+      const mapped = Object.fromEntries(value.entries());
+      return search(mapped) ?? search(Array.from(value.values()));
+    };
+
     const search = (value: unknown): ProjectAssessment | null => {
       if (typeof value === "string") {
         try {
@@ -192,6 +197,10 @@ class CodeSentinel {
 
       if (!value || typeof value !== "object") {
         return null;
+      }
+
+      if (value instanceof Map) {
+        return searchMap(value);
       }
 
       const assessment = coerceAssessment(value as Record<string, unknown>);
