@@ -58,16 +58,24 @@ export function useAnalyzeProject() {
       setIsAnalyzing(true);
       return contract.analyzeProject(projectData);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["codesentinel-assessments"] });
       setIsAnalyzing(false);
 
-      // Debug: log mutation result to console to verify assessment payload
-      // Remove this in production.
-      try {
-        // eslint-disable-next-line no-console
-        console.debug("analyzeProject.onSuccess: result available");
-      } catch {}
+      // Keep the transaction shape visible when the SDK returns no decoded assessment.
+      console.debug("CodeSentinel assessment response", {
+        assessment: result.assessment,
+        receiptKeys: Object.keys(result.receipt ?? {}),
+        transactionHash: result.receipt?.hash,
+      });
+
+      if (!result.assessment) {
+        error("Assessment completed without a readable result", {
+          description:
+            "The transaction was accepted, but GenLayer returned no decodable assessment payload.",
+        });
+        return;
+      }
 
       success("Assessment completed", {
         description:
