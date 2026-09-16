@@ -86,10 +86,11 @@ class CodeSentinel {
       interval: 5000,
       fullTransaction: true,
     });
+    const transaction = await this.client.getTransaction({ hash: txHash });
 
     return {
       receipt: receipt as TransactionReceipt,
-      assessment: this.extractAssessment(receipt),
+      assessment: this.extractAssessment(transaction) ?? this.extractAssessment(receipt),
     };
   }
 
