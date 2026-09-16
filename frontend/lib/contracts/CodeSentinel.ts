@@ -79,6 +79,13 @@ class CodeSentinel {
       interval: 5000,
     });
 
+    // Debug: print the raw receipt to help diagnose missing assessment payloads
+    // Remove or guard this in production.
+    try {
+      // eslint-disable-next-line no-console
+      console.debug("CodeSentinel tx receipt:", receipt);
+    } catch {}
+
     return {
       receipt: receipt as TransactionReceipt,
       assessment: this.extractAssessment(receipt),
@@ -88,18 +95,53 @@ class CodeSentinel {
   private extractAssessment(receipt: any): ProjectAssessment | null {
     const leaderResult = receipt?.consensus_data?.leader_receipt?.[0]?.result;
 
-    // The validator/leader result may wrap the actual JSON in a `calldata`
-    // property (e.g. glvm.Return). Prefer the `calldata` payload when
-    // available, otherwise fall back to the raw result object.
-    const leaderPayload = leaderResult?.calldata ?? leaderResult;
-    if (this.isProjectAssessment(leaderPayload)) {
-      return leaderPayload;
-    }
+    // Helper to normalize candidate values: if the value is a JSON string,
+    // parse it; if it's an object, return as-is.
+    const normalize = (v: any): any => {
+      if (v == null) return v;
+      if (typeof v === "string") {
+        try {
+          return JSON.parse(v);
+        } catch {
+          return v;
+        }
+      }
 
-    const receiptResult = receipt?.result;
-    const receiptPayload = receiptResult?.calldata ?? receiptResult;
-    if (this.isProjectAssessment(receiptPayload)) {
-      return receiptPayload;
+      // Some runtimes wrap the payload under a `calldata` string
+      if (
+        typeof v === "object" &&
+        v !== null &&
+        typeof v.calldata === "string"
+      ) {
+        try {
+          return JSON.parse(v.calldata);
+        } catch {
+          return v.calldata;
+        }
+      }
+
+      // If calldata is already an object, prefer it.
+      if (
+        typeof v === "object" &&
+        v !== null &&
+        typeof v.calldata === "object"
+      ) {
+        return v.calldata;
+      }
+
+      return v;
+    };
+
+    const candidates = [
+      leaderResult,
+      leaderResult?.calldata,
+      receipt?.result,
+      receipt?.result?.calldata,
+    ];
+
+    for (const c of candidates) {
+      const payload = normalize(c);
+      if (this.isProjectAssessment(payload)) return payload;
     }
 
     return null;

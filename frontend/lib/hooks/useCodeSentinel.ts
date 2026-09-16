@@ -3,7 +3,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import CodeSentinel from "../contracts/CodeSentinel";
-import type { ProjectAssessment, ProjectData, TransactionReceipt } from "../contracts/types";
+import type {
+  ProjectAssessment,
+  ProjectData,
+  TransactionReceipt,
+} from "../contracts/types";
 import { getContractAddress, getStudioUrl } from "../genlayer/client";
 import type { FeePresetLevel } from "../genlayer/fees";
 import { useWallet } from "../genlayer/wallet";
@@ -40,11 +44,15 @@ export function useAnalyzeProject() {
   >({
     mutationFn: async ({ projectData, feePresetLevel }) => {
       if (!contract) {
-        throw new Error("Contract not configured. Set NEXT_PUBLIC_CONTRACT_ADDRESS first.");
+        throw new Error(
+          "Contract not configured. Set NEXT_PUBLIC_CONTRACT_ADDRESS first.",
+        );
       }
 
       if (!address) {
-        throw new Error("Wallet not connected. Connect your wallet to run an assessment.");
+        throw new Error(
+          "Wallet not connected. Connect your wallet to run an assessment.",
+        );
       }
 
       setIsAnalyzing(true);
@@ -58,8 +66,17 @@ export function useAnalyzeProject() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["codesentinel-assessments"] });
       setIsAnalyzing(false);
+
+      // Debug: log mutation result to console to verify assessment payload
+      // Remove this in production.
+      try {
+        // eslint-disable-next-line no-console
+        console.debug("analyzeProject.onSuccess: result available");
+      } catch {}
+
       success("Assessment completed", {
-        description: "CodeSentinel returned a validator-approved project review.",
+        description:
+          "CodeSentinel returned a validator-approved project review.",
       });
     },
     onError: (err) => {
