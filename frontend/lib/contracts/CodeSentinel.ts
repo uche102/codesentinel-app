@@ -154,17 +154,26 @@ class CodeSentinel {
       return v;
     };
 
-    const candidates = [
-      leaderResult,
-      leaderResult?.calldata,
-      leaderResult?.payload,
-      leaderResult?.payload?.readable,
-      receipt?.result,
-      receipt?.result?.calldata,
-      receipt?.result?.payload,
-      receipt?.result?.payload?.readable,
-    ];
+    const candidates: any[] = [];
 
+    // Receipt-level candidates
+    candidates.push(receipt?.result, receipt?.result?.calldata, receipt?.result?.payload, receipt?.result?.payload?.readable);
+
+    // Leader-level candidates (check all leader receipts)
+    const leaderReceipts = receipt?.consensus_data?.leader_receipt || [];
+    for (const lr of leaderReceipts) {
+      candidates.push(lr?.result, lr?.result?.payload, lr?.result?.payload?.readable);
+      // eq_outputs may contain the return payload under a numeric key
+      const eq = lr?.eq_outputs;
+      if (eq && typeof eq === 'object') {
+        for (const k of Object.keys(eq)) {
+          candidates.push(eq[k]?.payload, eq[k]?.payload?.readable);
+        }
+      }
+      candidates.push(lr?.calldata, lr?.calldata?.readable, lr?.payload, lr?.payload?.readable);
+    }
+
+    // Normalize and find the first valid assessment
     for (const c of candidates) {
       const payload = normalize(c);
       if (this.isProjectAssessment(payload)) {
