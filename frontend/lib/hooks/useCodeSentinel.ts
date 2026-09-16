@@ -56,12 +56,7 @@ export function useAnalyzeProject() {
       }
 
       setIsAnalyzing(true);
-      const feePreset = await contract.estimateAnalyzeProjectFees(
-        projectData,
-        feePresetLevel ?? "standard",
-      );
-
-      return contract.analyzeProject(projectData, feePreset);
+      return contract.analyzeProject(projectData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["codesentinel-assessments"] });
