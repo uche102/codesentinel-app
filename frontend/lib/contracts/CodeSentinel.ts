@@ -8,14 +8,22 @@ import {
   type FeePresetEstimate,
   type FeePresetLevel,
 } from "../genlayer/fees";
-import type { ProjectAssessment, ProjectData, TransactionReceipt } from "./types";
+import type {
+  ProjectAssessment,
+  ProjectData,
+  TransactionReceipt,
+} from "./types";
 
 class CodeSentinel {
   private contractAddress: `0x${string}`;
   private client: any;
   private studioUrl?: string;
 
-  constructor(contractAddress: string, address?: string | null, studioUrl?: string) {
+  constructor(
+    contractAddress: string,
+    address?: string | null,
+    studioUrl?: string,
+  ) {
     this.contractAddress = contractAddress as `0x${string}`;
     this.studioUrl = studioUrl;
 
@@ -51,7 +59,10 @@ class CodeSentinel {
   async analyzeProject(
     projectData: ProjectData,
     feePreset?: FeePresetEstimate,
-  ): Promise<{ receipt: TransactionReceipt; assessment: ProjectAssessment | null }> {
+  ): Promise<{
+    receipt: TransactionReceipt;
+    assessment: ProjectAssessment | null;
+  }> {
     const fees = feePresetToTransactionFees(feePreset);
     const txHash = await this.client.writeContract({
       address: this.contractAddress,
@@ -75,13 +86,20 @@ class CodeSentinel {
   }
 
   private extractAssessment(receipt: any): ProjectAssessment | null {
-    const result = receipt?.consensus_data?.leader_receipt?.[0]?.result;
-    if (this.isProjectAssessment(result)) {
-      return result;
+    const leaderResult = receipt?.consensus_data?.leader_receipt?.[0]?.result;
+
+    // The validator/leader result may wrap the actual JSON in a `calldata`
+    // property (e.g. glvm.Return). Prefer the `calldata` payload when
+    // available, otherwise fall back to the raw result object.
+    const leaderPayload = leaderResult?.calldata ?? leaderResult;
+    if (this.isProjectAssessment(leaderPayload)) {
+      return leaderPayload;
     }
 
-    if (this.isProjectAssessment(receipt?.result)) {
-      return receipt.result;
+    const receiptResult = receipt?.result;
+    const receiptPayload = receiptResult?.calldata ?? receiptResult;
+    if (this.isProjectAssessment(receiptPayload)) {
+      return receiptPayload;
     }
 
     return null;

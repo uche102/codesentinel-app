@@ -330,6 +330,19 @@ export function CodeSentinelDashboard() {
     }
   };
 
+  const simulateAssessment = () => {
+    const sample: ProjectAssessment = {
+      overall_score: 85,
+      maturity: "production_ready",
+      strengths: ["Clear project structure", "Automated tests are present"],
+      risks: ["Documentation could be expanded"],
+      recommendations: ["Improve deployment documentation"],
+    };
+
+    setAssessment(sample);
+    success("Simulated assessment applied");
+  };
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.20),transparent_25%),radial-gradient(circle_at_right,rgba(34,211,238,0.14),transparent_25%),linear-gradient(180deg,#05070d_0%,#0b1018_28%,#05070d_100%)] text-white">
       <header className="border-b border-white/10 bg-black/35 backdrop-blur-xl">
@@ -560,6 +573,16 @@ export function CodeSentinelDashboard() {
                   </>
                 )}
               </Button>
+              {process.env.NODE_ENV !== "production" && (
+                <Button
+                  type="button"
+                  onClick={simulateAssessment}
+                  className="mt-2 h-10 w-full rounded-xl border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.05]"
+                  variant="outline"
+                >
+                  Simulate Assessment
+                </Button>
+              )}
             </form>
           </section>
 
