@@ -12,6 +12,7 @@ import { getEthereumProvider } from "../genlayer/client";
 import type {
   ProjectAssessment,
   ProjectData,
+  ProjectMaturity,
   TransactionReceipt,
 } from "./types";
 
@@ -115,10 +116,17 @@ class CodeSentinel {
       const strengths = value.strengths;
       const risks = value.risks;
       const recommendations = value.recommendations;
+      const validMaturities: ProjectMaturity[] = [
+        "insufficient_evidence",
+        "early_stage",
+        "developing",
+        "production_ready",
+      ];
 
       if (
         overallScore === undefined ||
         typeof maturity !== "string" ||
+        !validMaturities.includes(maturity as ProjectMaturity) ||
         !Array.isArray(strengths) ||
         !Array.isArray(risks) ||
         !Array.isArray(recommendations)
@@ -139,7 +147,7 @@ class CodeSentinel {
 
       return {
         overall_score: numericScore,
-        maturity,
+        maturity: maturity as ProjectMaturity,
         strengths: strengths.filter((item): item is string => typeof item === "string"),
         risks: risks.filter((item): item is string => typeof item === "string"),
         recommendations: recommendations.filter(
