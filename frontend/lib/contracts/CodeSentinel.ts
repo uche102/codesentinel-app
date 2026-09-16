@@ -88,12 +88,16 @@ class CodeSentinel {
     });
     const transaction = await this.client.getTransaction({ hash: txHash });
 
-    console.error("CodeSentinel transaction payload", {
-      transactionKeys: Object.keys(transaction ?? {}),
-      receiptKeys: Object.keys(receipt ?? {}),
-      consensusData: (transaction as any)?.consensus_data,
-      data: (transaction as any)?.data,
-    });
+    const diagnosticPayload = JSON.stringify(
+      {
+        transactionKeys: Object.keys(transaction ?? {}),
+        receiptKeys: Object.keys(receipt ?? {}),
+        consensusData: (transaction as any)?.consensus_data,
+        data: (transaction as any)?.data,
+      },
+      (_, value) => (typeof value === "bigint" ? value.toString() : value),
+    );
+    console.error("CodeSentinel transaction payload", diagnosticPayload);
 
     return {
       receipt: receipt as TransactionReceipt,
