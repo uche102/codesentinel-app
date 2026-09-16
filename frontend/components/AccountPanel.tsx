@@ -72,6 +72,15 @@ export function AccountPanel() {
     }
   };
 
+  const handleConnectTrigger = () => {
+    if (!isMetaMaskInstalled) {
+      setIsModalOpen(true);
+      return;
+    }
+
+    void handleConnect();
+  };
+
   const handleDisconnect = () => {
     disconnectWallet();
     setIsModalOpen(false);
@@ -97,12 +106,14 @@ export function AccountPanel() {
   if (!isConnected) {
     return (
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogTrigger asChild>
-          <Button variant="gradient" disabled={connectTriggerDisabled}>
-            <User className="w-4 h-4 mr-2" />
-            Connect Wallet
-          </Button>
-        </DialogTrigger>
+        <Button
+          variant="gradient"
+          disabled={connectTriggerDisabled || isConnecting}
+          onClick={handleConnectTrigger}
+        >
+          <User className="w-4 h-4 mr-2" />
+          {isConnecting ? "Connecting..." : "Connect Wallet"}
+        </Button>
         <DialogContent className="brand-card border-2">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
