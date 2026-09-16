@@ -92,8 +92,10 @@ def validate_project_data(project_data: dict) -> bool:
 
 
 class CodeSentinel(gl.Contract):
+    assessments: TreeMap[Address, str]
+
     def __init__(self):
-        pass
+        self.assessments = TreeMap()
 
     @gl.public.write
     def analyze_project(self, project_data: dict) -> dict:
@@ -160,4 +162,14 @@ Rules:
 
             return validate_assessment(leader_result.calldata)
 
-        return glvm.run_nondet_unsafe.lazy(leader_fn, validator_fn).get()
+        assessment = glvm.run_nondet_unsafe.lazy(leader_fn, validator_fn).get()
+        self.assessments[gl.message.sender_address] = json.dumps(
+            assessment,
+            sort_keys=True,
+        )
+        return assessment
+
+    @gl.public.view
+    def get_assessment(self, owner: str) -> dict:
+        stored = self.assessments.get(Address(owner), "")
+        return json.loads(stored) if stored else {}

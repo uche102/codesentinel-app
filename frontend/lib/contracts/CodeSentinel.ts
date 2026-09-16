@@ -18,6 +18,7 @@ class CodeSentinel {
   private contractAddress: `0x${string}`;
   private client: any;
   private studioUrl?: string;
+  private address?: string | null;
 
   constructor(
     contractAddress: string,
@@ -26,6 +27,7 @@ class CodeSentinel {
   ) {
     this.contractAddress = contractAddress as `0x${string}`;
     this.studioUrl = studioUrl;
+    this.address = address;
 
     const config: any = { chain: studionet };
 
@@ -79,17 +81,24 @@ class CodeSentinel {
       interval: 5000,
     });
 
-    // Debug: print the raw receipt to help diagnose missing assessment payloads
-    // Remove or guard this in production.
-    try {
-      // eslint-disable-next-line no-console
-      console.debug("CodeSentinel tx receipt:", receipt);
-    } catch {}
-
     return {
       receipt: receipt as TransactionReceipt,
-      assessment: this.extractAssessment(receipt),
+      assessment: await this.getAssessment(),
     };
+  }
+
+  async getAssessment(): Promise<ProjectAssessment | null> {
+    if (!this.address) {
+      return null;
+    }
+
+    const result = await this.client.readContract({
+      address: this.contractAddress,
+      functionName: "get_assessment",
+      args: [this.address],
+    });
+
+    return this.isProjectAssessment(result) ? result : null;
   }
 
   private extractAssessment(receipt: any): ProjectAssessment | null {

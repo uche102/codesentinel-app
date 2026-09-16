@@ -10,6 +10,7 @@ CONTRACT_PATH = "contracts/CodeSentinel.py"
 def test_analyze_project_returns_valid_assessment(
     direct_vm,
     direct_deploy,
+    direct_alice,
 ):
     direct_vm.mock_llm(
         r".*",
@@ -32,6 +33,7 @@ def test_analyze_project_returns_valid_assessment(
     )
 
     contract = direct_deploy(CONTRACT_PATH)
+    direct_vm.sender = direct_alice
 
     project_data = {
         "name": "Example Project",
@@ -49,6 +51,9 @@ def test_analyze_project_returns_valid_assessment(
     assert isinstance(result["strengths"], list)
     assert isinstance(result["risks"], list)
     assert isinstance(result["recommendations"], list)
+
+    stored = contract.get_assessment(direct_alice.as_hex)
+    assert stored == result
 
 
 def test_invalid_score_is_rejected():
