@@ -97,36 +97,58 @@ class CodeSentinel {
 
     // Helper to normalize candidate values: if the value is a JSON string,
     // parse it; if it's an object, return as-is.
+    const repairAndParse = (s: string) => {
+      // Quick repair heuristics for malformed JSON returned by validators:
+      // - Replace consecutive quotes between fields with "," ("" -> ",")
+      // - Remove trailing commas before closing brackets/braces
+      // - Remove stray commas before array/object closers
+      let out = s;
+      out = out.replace(/""/g, '\",\"');
+      out = out.replace(/,\s*\]/g, "]");
+      out = out.replace(/,\s*\}/g, "}");
+
+      try {
+        return JSON.parse(out);
+      } catch {
+        // If repair fails, return original string to avoid throwing
+        return s;
+      }
+    };
+
     const normalize = (v: any): any => {
       if (v == null) return v;
+
+      // If v is a bare string, try to parse or repair+parse
       if (typeof v === "string") {
         try {
           return JSON.parse(v);
         } catch {
-          return v;
+          return repairAndParse(v);
         }
       }
 
-      // Some runtimes wrap the payload under a `calldata` string
-      if (
-        typeof v === "object" &&
-        v !== null &&
-        typeof v.calldata === "string"
-      ) {
-        try {
-          return JSON.parse(v.calldata);
-        } catch {
+      // If object contains a readable or calldata string, prefer parsing that
+      if (typeof v === "object" && v !== null) {
+        if (typeof v.readable === "string") {
+          try {
+            return JSON.parse(v.readable);
+          } catch {
+            return repairAndParse(v.readable);
+          }
+        }
+
+        if (typeof v.calldata === "string") {
+          try {
+            return JSON.parse(v.calldata);
+          } catch {
+            return repairAndParse(v.calldata);
+          }
+        }
+
+        if (typeof v.calldata === "object" && v.calldata !== null) {
+          // prefer the object payload
           return v.calldata;
         }
-      }
-
-      // If calldata is already an object, prefer it.
-      if (
-        typeof v === "object" &&
-        v !== null &&
-        typeof v.calldata === "object"
-      ) {
-        return v.calldata;
       }
 
       return v;
