@@ -83,22 +83,13 @@ class CodeSentinel {
       status: "ACCEPTED" as any,
       retries: 24,
       interval: 5000,
+      fullTransaction: true,
     });
 
-    const receiptAssessment = this.extractAssessment(receipt);
-
-    try {
-      const storedAssessment = await this.getAssessment();
-      return {
-        receipt: receipt as TransactionReceipt,
-        assessment: storedAssessment ?? receiptAssessment,
-      };
-    } catch {
-      return {
-        receipt: receipt as TransactionReceipt,
-        assessment: receiptAssessment,
-      };
-    }
+    return {
+      receipt: receipt as TransactionReceipt,
+      assessment: this.extractAssessment(receipt),
+    };
   }
 
   async getAssessment(): Promise<ProjectAssessment | null> {
