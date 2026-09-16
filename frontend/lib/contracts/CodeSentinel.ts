@@ -8,6 +8,7 @@ import {
   type FeePresetEstimate,
   type FeePresetLevel,
 } from "../genlayer/fees";
+import { getEthereumProvider } from "../genlayer/client";
 import type {
   ProjectAssessment,
   ProjectData,
@@ -33,6 +34,11 @@ class CodeSentinel {
 
     if (address) {
       config.account = address as `0x${string}`;
+    }
+
+    const provider = getEthereumProvider();
+    if (provider) {
+      config.provider = provider;
     }
 
     if (studioUrl) {
