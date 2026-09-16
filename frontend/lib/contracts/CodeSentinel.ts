@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "genlayer-js";
+import { abi, createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import {
   estimateWriteFeePreset,
@@ -173,6 +173,19 @@ class CodeSentinel {
         try {
           return search(JSON.parse(value));
         } catch {
+          try {
+            const bytes = Uint8Array.from(atob(value), (character) =>
+              character.charCodeAt(0),
+            );
+
+            // GenLayer result calldata starts with 0 for a returned value.
+            if (bytes[0] === 0) {
+              return search((abi as any).calldata.decode(bytes.slice(1)));
+            }
+          } catch {
+            // Ignore ordinary strings and malformed payloads.
+          }
+
           return null;
         }
       }
