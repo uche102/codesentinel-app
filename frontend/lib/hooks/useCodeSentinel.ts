@@ -62,13 +62,6 @@ export function useAnalyzeProject() {
       queryClient.invalidateQueries({ queryKey: ["codesentinel-assessments"] });
       setIsAnalyzing(false);
 
-      // Keep the transaction shape visible when the SDK returns no decoded assessment.
-      console.error("CodeSentinel assessment response", {
-        assessment: result.assessment,
-        receiptKeys: Object.keys(result.receipt ?? {}),
-        transactionHash: result.receipt?.hash,
-      });
-
       if (!result.assessment) {
         error("Assessment completed without a readable result", {
           description:
