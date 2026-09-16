@@ -81,8 +81,8 @@ class CodeSentinel {
 
     const receipt = await this.client.waitForTransactionReceipt({
       hash: txHash,
-      status: "ACCEPTED" as any,
-      retries: 24,
+      status: "FINALIZED" as any,
+      retries: 36,
       interval: 5000,
       fullTransaction: true,
     });
