@@ -71,13 +71,11 @@ class CodeSentinel {
     receipt: TransactionReceipt;
     assessment: ProjectAssessment | null;
   }> {
-    const fees = feePresetToTransactionFees(feePreset);
     const txHash = await this.client.writeContract({
       address: this.contractAddress,
       functionName: "analyze_project",
       args: [projectData],
       value: 0n,
-      ...(fees ? { fees } : {}),
     });
 
     const receipt = await this.client.waitForTransactionReceipt({
@@ -87,10 +85,20 @@ class CodeSentinel {
       interval: 5000,
     });
 
-    return {
-      receipt: receipt as TransactionReceipt,
-      assessment: await this.getAssessment(),
-    };
+    const receiptAssessment = this.extractAssessment(receipt);
+
+    try {
+      const storedAssessment = await this.getAssessment();
+      return {
+        receipt: receipt as TransactionReceipt,
+        assessment: storedAssessment ?? receiptAssessment,
+      };
+    } catch {
+      return {
+        receipt: receipt as TransactionReceipt,
+        assessment: receiptAssessment,
+      };
+    }
   }
 
   async getAssessment(): Promise<ProjectAssessment | null> {

@@ -1,38 +1,11 @@
 @import "tailwindcss";
 
-/* GenLayer Brand Guidelines 2025 - Typography via local fonts */
-/* --font-body / --font-display: Switzer */
-
-@font-face {
-  font-family: 'Switzer';
-  src: url('/fonts/Switzer-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Switzer';
-  src: url('/fonts/Switzer-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Switzer';
-  src: url('/fonts/Switzer-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 @custom-variant dark (&:is(.dark *));
 
 /* GenLayer Brand Colors 2025 */
 :root {
-  --font-body: 'Switzer';
-  --font-display: 'Switzer';
+  --font-body: 'Switzer', sans-serif;
+  --font-display: 'Switzer', sans-serif;
 
   /* Base colors - keep black background for dark theme */
   --background: oklch(0 0 0);
