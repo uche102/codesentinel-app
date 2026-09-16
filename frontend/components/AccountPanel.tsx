@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { User, LogOut, AlertCircle, ExternalLink } from "lucide-react";
 import { useWallet } from "@/lib/genlayer/wallet";
 import { AddressDisplay } from "./AddressDisplay";
@@ -34,7 +34,6 @@ export function AccountPanel() {
     isConnected,
     isMetaMaskInstalled,
     isOnCorrectNetwork,
-    isLoading,
     connectWallet,
     disconnectWallet,
     switchWalletAccount,
@@ -44,13 +43,6 @@ export function AccountPanel() {
   const [connectionError, setConnectionError] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const connectTriggerDisabled = isMounted && isLoading;
 
   const handleConnect = async () => {
     if (!isMetaMaskInstalled) {
@@ -108,7 +100,7 @@ export function AccountPanel() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <Button
           variant="gradient"
-          disabled={connectTriggerDisabled || isConnecting}
+          disabled={isConnecting}
           onClick={handleConnectTrigger}
         >
           <User className="w-4 h-4 mr-2" />
@@ -266,7 +258,7 @@ export function AccountPanel() {
               onClick={handleSwitchAccount}
               variant="outline"
               className="w-full"
-              disabled={isSwitching || isLoading}
+              disabled={isSwitching}
             >
               <User className="w-4 h-4 mr-2" />
               {isSwitching ? "Switching..." : "Switch Account"}
