@@ -63,7 +63,7 @@ export function useAnalyzeProject() {
       setIsAnalyzing(false);
 
       // Keep the transaction shape visible when the SDK returns no decoded assessment.
-      console.debug("CodeSentinel assessment response", {
+      console.error("CodeSentinel assessment response", {
         assessment: result.assessment,
         receiptKeys: Object.keys(result.receipt ?? {}),
         transactionHash: result.receipt?.hash,
