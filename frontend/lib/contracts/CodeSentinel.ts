@@ -109,11 +109,46 @@ class CodeSentinel {
   private extractAssessment(receipt: any): ProjectAssessment | null {
     const visited = new Set<object>();
 
-    const search = (value: unknown): ProjectAssessment | null => {
-      if (this.isProjectAssessment(value)) {
-        return value;
+    const coerceAssessment = (value: Record<string, unknown>) => {
+      const overallScore = value.overall_score ?? value.overallScore;
+      const maturity = value.maturity;
+      const strengths = value.strengths;
+      const risks = value.risks;
+      const recommendations = value.recommendations;
+
+      if (
+        overallScore === undefined ||
+        typeof maturity !== "string" ||
+        !Array.isArray(strengths) ||
+        !Array.isArray(risks) ||
+        !Array.isArray(recommendations)
+      ) {
+        return null;
       }
 
+      const numericScore =
+        typeof overallScore === "number"
+          ? overallScore
+          : typeof overallScore === "string"
+            ? Number(overallScore)
+            : NaN;
+
+      if (!Number.isFinite(numericScore)) {
+        return null;
+      }
+
+      return {
+        overall_score: numericScore,
+        maturity,
+        strengths: strengths.filter((item): item is string => typeof item === "string"),
+        risks: risks.filter((item): item is string => typeof item === "string"),
+        recommendations: recommendations.filter(
+          (item): item is string => typeof item === "string",
+        ),
+      } satisfies ProjectAssessment;
+    };
+
+    const search = (value: unknown): ProjectAssessment | null => {
       if (typeof value === "string") {
         try {
           return search(JSON.parse(value));
@@ -124,6 +159,11 @@ class CodeSentinel {
 
       if (!value || typeof value !== "object") {
         return null;
+      }
+
+      const assessment = coerceAssessment(value as Record<string, unknown>);
+      if (assessment) {
+        return assessment;
       }
 
       if (visited.has(value)) {
