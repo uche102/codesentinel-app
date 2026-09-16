@@ -157,13 +157,23 @@ class CodeSentinel {
     const candidates = [
       leaderResult,
       leaderResult?.calldata,
+      leaderResult?.payload,
+      leaderResult?.payload?.readable,
       receipt?.result,
       receipt?.result?.calldata,
+      receipt?.result?.payload,
+      receipt?.result?.payload?.readable,
     ];
 
     for (const c of candidates) {
       const payload = normalize(c);
-      if (this.isProjectAssessment(payload)) return payload;
+      if (this.isProjectAssessment(payload)) {
+        try {
+          // eslint-disable-next-line no-console
+          console.debug("CodeSentinel parsed assessment:", payload);
+        } catch {}
+        return payload;
+      }
     }
 
     return null;
