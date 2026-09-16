@@ -16,6 +16,27 @@ import type {
   TransactionReceipt,
 } from "./types";
 
+export function decodeGenLayerResultValue(value: string): unknown {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const normalized = trimmed.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const bytes = Uint8Array.from(atob(padded), (character) =>
+      character.charCodeAt(0),
+    );
+
+    if (bytes.length > 1 && bytes[0] === 0) {
+      return (abi as any).calldata.decode(bytes.slice(1));
+    }
+  } catch {
+    // Ignore malformed base64 payloads; we will fall back to ordinary string parsing.
+  }
+
+  return null;
+}
+
 class CodeSentinel {
   private contractAddress: `0x${string}`;
   private client: any;
@@ -149,6 +170,8 @@ class CodeSentinel {
       const numericScore =
         typeof overallScore === "number"
           ? overallScore
+          : typeof overallScore === "bigint"
+            ? Number(overallScore)
           : typeof overallScore === "string"
             ? Number(overallScore)
             : NaN;
@@ -175,20 +198,39 @@ class CodeSentinel {
 
     const search = (value: unknown): ProjectAssessment | null => {
       if (typeof value === "string") {
-        try {
-          return search(JSON.parse(value));
-        } catch {
-          try {
-            const bytes = Uint8Array.from(atob(value), (character) =>
-              character.charCodeAt(0),
-            );
+        const trimmed = value.trim();
 
-            // GenLayer result calldata starts with 0 for a returned value.
-            if (bytes[0] === 0) {
-              return search((abi as any).calldata.decode(bytes.slice(1)));
+        if (!trimmed) {
+          return null;
+        }
+
+        try {
+          return search(JSON.parse(trimmed));
+        } catch {
+          if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+            return null;
+          }
+
+          try {
+            const decodedValue = decodeGenLayerResultValue(trimmed);
+            if (decodedValue !== null) {
+              return search(decodedValue);
             }
           } catch {
-            // Ignore ordinary strings and malformed payloads.
+            // Ignore malformed payloads.
+          }
+
+          if (typeof value === "string") {
+            const maybeWrapped = value as string;
+            const payloadMatch = maybeWrapped.match(/\"readable\"\s*:\s*\"(.*)\"/s);
+            if (payloadMatch) {
+              try {
+                const nested = JSON.parse(payloadMatch[1].replace(/\\"/g, '"'));
+                return search(nested);
+              } catch {
+                // Ignore malformed readable payloads.
+              }
+            }
           }
 
           return null;
