@@ -268,7 +268,7 @@ export function AccountPanel() {
               onClick={handleDisconnect}
               className="w-full text-destructive hover:text-destructive"
               variant="outline"
-              disabled={isSwitching || isLoading}
+              disabled={isSwitching}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Disconnect Wallet
