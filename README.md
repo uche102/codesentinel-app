@@ -2,6 +2,26 @@
 
 DevDAO is a small GenLayer MVP for developer-focused governance. Developers submit project funding proposals, GenLayer validators produce an advisory AI evaluation, and DAO members vote YES or NO.
 
+## CodeSentinel repository assessment
+
+CodeSentinel assessments use repository files inspected from GitHub, not only
+repository metadata. The GitHub inspection endpoint attaches up to eight
+bounded source, test, workflow, and documentation excerpts to the contract
+input. The contract requires every returned strength, risk, and recommendation
+to cite an exact quote from one of those files.
+
+Validators independently review whether the cited findings are supported and
+produce their own score and maturity. The contract rejects a review that
+identifies unsupported findings, disagrees on the maturity, or differs from
+the proposed score by more than ten points. Maturity is also constrained to
+consistent score bands: 0-19 insufficient evidence, 20-49 early stage, 50-74
+developing, and 75-100 production ready. These are advisory AI assessments,
+not a substitute for a full security audit.
+
+Repository evidence is limited to at most 12 files, 4,000 characters per file,
+and 24,000 characters total. The GitHub inspection path currently submits at
+most eight excerpts of 3,000 characters each.
+
 ## Why GenLayer
 
 The contract uses GenLayer intelligent-contract execution for proposal evaluation. Proposal data is sent into a validator prompt, validators check the returned JSON shape, and the validated evaluation is stored with the proposal. The frontend reads the stored result from the deployed contract.

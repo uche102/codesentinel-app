@@ -9,6 +9,7 @@ export interface ProjectData {
   has_ci: boolean;
   file_count: number;
   test_file_count: number;
+  repository_files: RepositoryEvidenceFile[];
   repo_url?: string;
   owner?: string;
   repo?: string;
@@ -31,6 +32,11 @@ export interface ProjectData {
   detected_frameworks?: string[];
 }
 
+export interface RepositoryEvidenceFile {
+  path: string;
+  content: string;
+}
+
 export interface GithubRepoAnalysis {
   projectData: ProjectData;
   summary: {
@@ -39,6 +45,7 @@ export interface GithubRepoAnalysis {
     defaultBranch: string;
     treeTruncated: boolean;
     inspectedFiles: number;
+    evidenceFiles: number;
   };
 }
 
@@ -51,9 +58,17 @@ export type ProjectMaturity =
 export interface ProjectAssessment {
   overall_score: number;
   maturity: ProjectMaturity;
-  strengths: string[];
-  risks: string[];
-  recommendations: string[];
+  strengths: AssessmentFinding[];
+  risks: AssessmentFinding[];
+  recommendations: AssessmentFinding[];
+}
+
+export interface AssessmentFinding {
+  finding: string;
+  evidence: Array<{
+    path: string;
+    quote: string;
+  }>;
 }
 
 export interface Bet {

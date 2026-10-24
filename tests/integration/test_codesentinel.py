@@ -18,6 +18,16 @@ def test_codesentinel_analyze_project():
         "has_ci": True,
         "file_count": 50,
         "test_file_count": 10,
+        "repository_files": [
+            {
+                "path": "README.md",
+                "content": "# Example Project\nRun tests with pytest.",
+            },
+            {
+                "path": "tests/test_app.py",
+                "content": "def test_app():\n    assert True",
+            },
+        ],
     }
 
     result = contract.analyze_project(
@@ -51,4 +61,16 @@ def test_codesentinel_analyze_project():
 
     for field in ("strengths", "risks", "recommendations"):
         assert isinstance(assessment[field], list)
-        assert all(isinstance(item, str) for item in assessment[field])
+        for finding in assessment[field]:
+            assert isinstance(finding, dict)
+            assert isinstance(finding["finding"], str)
+            assert finding["evidence"]
+            for citation in finding["evidence"]:
+                assert citation["path"] in {
+                    item["path"] for item in project_data["repository_files"]
+                }
+                assert citation["quote"] in next(
+                    item["content"]
+                    for item in project_data["repository_files"]
+                    if item["path"] == citation["path"]
+                )

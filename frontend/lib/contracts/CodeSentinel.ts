@@ -10,11 +10,40 @@ import {
 } from "../genlayer/fees";
 import { getEthereumProvider } from "../genlayer/client";
 import type {
+  AssessmentFinding,
   ProjectAssessment,
   ProjectData,
   ProjectMaturity,
   TransactionReceipt,
 } from "./types";
+
+function isAssessmentFinding(value: unknown): value is AssessmentFinding {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const finding = value as AssessmentFinding;
+  return (
+    typeof finding.finding === "string" &&
+    finding.finding.trim().length > 0 &&
+    Array.isArray(finding.evidence) &&
+    finding.evidence.length > 0 &&
+    finding.evidence.every(
+      (citation) =>
+        typeof citation?.path === "string" &&
+        citation.path.length > 0 &&
+        typeof citation.quote === "string" &&
+        citation.quote.trim().length > 0,
+    )
+  );
+}
+
+function maturityMatchesScore(score: number, maturity: ProjectMaturity) {
+  if (score < 20) return maturity === "insufficient_evidence";
+  if (score < 50) return maturity === "early_stage";
+  if (score < 75) return maturity === "developing";
+  return maturity === "production_ready";
+}
 
 export function decodeGenLayerResultValue(value: string): unknown {
   const trimmed = value.trim();
@@ -150,8 +179,11 @@ class CodeSentinel {
         typeof maturity !== "string" ||
         !validMaturities.includes(maturity as ProjectMaturity) ||
         !Array.isArray(strengths) ||
+        !strengths.every(isAssessmentFinding) ||
         !Array.isArray(risks) ||
-        !Array.isArray(recommendations)
+        !risks.every(isAssessmentFinding) ||
+        !Array.isArray(recommendations) ||
+        !recommendations.every(isAssessmentFinding)
       ) {
         return null;
       }
@@ -165,18 +197,21 @@ class CodeSentinel {
             ? Number(overallScore)
             : NaN;
 
-      if (!Number.isFinite(numericScore)) {
+      if (
+        !Number.isInteger(numericScore) ||
+        numericScore < 0 ||
+        numericScore > 100 ||
+        !maturityMatchesScore(numericScore, maturity as ProjectMaturity)
+      ) {
         return null;
       }
 
       return {
         overall_score: numericScore,
         maturity: maturity as ProjectMaturity,
-        strengths: strengths.filter((item): item is string => typeof item === "string"),
-        risks: risks.filter((item): item is string => typeof item === "string"),
-        recommendations: recommendations.filter(
-          (item): item is string => typeof item === "string",
-        ),
+        strengths,
+        risks,
+        recommendations,
       } satisfies ProjectAssessment;
     };
 
@@ -265,10 +300,20 @@ class CodeSentinel {
     const assessment = value as ProjectAssessment;
     return (
       typeof assessment.overall_score === "number" &&
+      Number.isInteger(assessment.overall_score) &&
+      assessment.overall_score >= 0 &&
+      assessment.overall_score <= 100 &&
       typeof assessment.maturity === "string" &&
+      maturityMatchesScore(
+        assessment.overall_score,
+        assessment.maturity as ProjectMaturity,
+      ) &&
       Array.isArray(assessment.strengths) &&
+      assessment.strengths.every(isAssessmentFinding) &&
       Array.isArray(assessment.risks) &&
-      Array.isArray(assessment.recommendations)
+      assessment.risks.every(isAssessmentFinding) &&
+      Array.isArray(assessment.recommendations) &&
+      assessment.recommendations.every(isAssessmentFinding)
     );
   }
 }

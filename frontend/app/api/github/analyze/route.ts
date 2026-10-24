@@ -141,7 +141,12 @@ export async function POST(request: Request) {
       },
     );
 
-    let tree: Array<{ path?: string; type?: string }> = [];
+    let tree: Array<{
+      path?: string;
+      type?: string;
+      size?: number;
+      sha?: string;
+    }> = [];
     let treeTruncated = false;
 
     if (treeResponse.ok) {
@@ -153,9 +158,11 @@ export async function POST(request: Request) {
       treeTruncated = Boolean(treePayload.truncated);
     }
 
-    const filePaths = tree
-      .map((node) => node.path ?? "")
-      .filter((path) => path && nodeIsBlob(path, nodeTypeFromTree(tree, path)));
+    const blobNodes = tree.filter(
+      (node): node is { path: string; type: "blob"; size?: number; sha?: string } =>
+        Boolean(node.path) && nodeIsBlob(node.path!, node.type),
+    );
+    const filePaths = blobNodes.map((node) => node.path);
 
     const hasReadme = filePaths.some((path) => /(^|\/)readme\.md$/i.test(path));
     const testFileCount = filePaths.filter((path) =>
@@ -191,6 +198,53 @@ export async function POST(request: Request) {
     const configFileCount = filePaths.filter((path) =>
       isLikelyConfigFile(path),
     ).length;
+    const evidenceNodes = blobNodes
+      .filter(
+        (node) =>
+          node.sha &&
+          typeof node.size === "number" &&
+          node.size <= 12000 &&
+          isLikelyEvidenceFile(node.path),
+      )
+      .sort((left, right) => evidencePriority(left.path) - evidencePriority(right.path))
+      .slice(0, 8);
+    const repositoryFiles = await Promise.all(
+      evidenceNodes.map(async ({ path, sha }) => {
+        const blobResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/git/blobs/${sha}`,
+          { headers, cache: "no-store" },
+        );
+        if (!blobResponse.ok) {
+          throw new Error(
+            `Unable to retrieve repository evidence for ${path} (HTTP ${blobResponse.status}).`,
+          );
+        }
+
+        const blob = (await blobResponse.json()) as {
+          content?: string;
+          encoding?: string;
+        };
+        if (blob.encoding !== "base64" || typeof blob.content !== "string") {
+          throw new Error(`GitHub returned unsupported file content for ${path}.`);
+        }
+
+        const content = Buffer.from(blob.content, "base64")
+          .toString("utf8")
+          .slice(0, 3000);
+        if (!content.trim() || content.includes("\u0000")) {
+          throw new Error(`Repository evidence file ${path} is empty or not text.`);
+        }
+
+        return { path, content };
+      }),
+    );
+
+    if (repositoryFiles.length === 0) {
+      return NextResponse.json(
+        { error: "No readable source, test, or documentation files were found." },
+        { status: 422 },
+      );
+    }
 
     const projectData = {
       name: repoData.name || repo,
@@ -219,6 +273,7 @@ export async function POST(request: Request) {
       config_file_count: configFileCount,
       workflow_count: workflowCount,
       detected_frameworks: workflowCount > 0 ? ["GitHub Actions"] : [],
+      repository_files: repositoryFiles,
     };
 
     return NextResponse.json({
@@ -229,6 +284,7 @@ export async function POST(request: Request) {
         defaultBranch,
         treeTruncated,
         inspectedFiles: fileCount,
+        evidenceFiles: repositoryFiles.length,
       },
     });
   } catch (error) {
@@ -256,10 +312,31 @@ function nodeIsBlob(path: string, type?: string) {
   );
 }
 
-function nodeTypeFromTree(
-  tree: Array<{ path?: string; type?: string }>,
-  path: string,
-) {
-  const match = tree.find((node) => node.path === path);
-  return match?.type;
+function isLikelyEvidenceFile(path: string) {
+  if (
+    /(^|\/)(\.env[^/]*|secrets?|credentials?|id_rsa|id_ed25519)(\/|$)/i.test(
+      path,
+    ) ||
+    /\.(pem|key|p12|pfx)$/i.test(path) ||
+    isLikelyLockfile(path)
+  ) {
+    return false;
+  }
+
+  return (
+    /\.(c|cc|cpp|cs|css|go|html|java|js|jsx|md|php|py|rb|rs|sh|sol|sql|toml|ts|tsx|vue|xml|ya?ml)$/i.test(
+      path,
+    ) ||
+    /(^|\/)(Dockerfile|Makefile|Gemfile|Procfile|requirements\.txt)$/i.test(
+      path,
+    )
+  );
+}
+
+function evidencePriority(path: string) {
+  if (/(^|\/)readme\.md$/i.test(path)) return 0;
+  if (isLikelyTestFile(path)) return 1;
+  if (isLikelyConfigFile(path)) return 2;
+  if (isLikelyWorkflow(path)) return 3;
+  return 4;
 }

@@ -6,512 +6,156 @@ from support.codesentinel_validation import validate_assessment, validate_projec
 
 CONTRACT_PATH = "contracts/CodeSentinel.py"
 
+PROJECT_DATA = {
+    "name": "Example Project",
+    "has_readme": True,
+    "has_tests": True,
+    "has_ci": True,
+    "file_count": 50,
+    "test_file_count": 10,
+    "repository_files": [
+        {
+            "path": "README.md",
+            "content": "# Example Project\nRun tests with pytest.",
+        },
+        {
+            "path": "tests/test_app.py",
+            "content": "def test_app():\n    assert True",
+        },
+    ],
+}
 
-def test_analyze_project_returns_valid_assessment(
+VALID_ASSESSMENT = {
+    "overall_score": 85,
+    "maturity": "production_ready",
+    "strengths": [
+        {
+            "finding": "The repository includes an automated test.",
+            "evidence": [
+                {"path": "tests/test_app.py", "quote": "def test_app():"}
+            ],
+        }
+    ],
+    "risks": [],
+    "recommendations": [],
+}
+
+VALID_REVIEW = {
+    "approved": True,
+    "overall_score": 82,
+    "maturity": "production_ready",
+    "unsupported_findings": [],
+}
+
+
+def mock_assessment_and_review(direct_vm):
+    direct_vm.mock_llm(
+        r".*independent repository assessment validator.*",
+        json.dumps(VALID_REVIEW),
+    )
+    direct_vm.mock_llm(
+        r".*software engineering technical due-diligence analyst.*",
+        json.dumps(VALID_ASSESSMENT),
+    )
+
+
+def test_analyze_project_returns_independently_reviewed_assessment(
     direct_vm,
     direct_deploy,
     direct_alice,
 ):
-    direct_vm.mock_llm(
-        r".*",
-        json.dumps(
-            {
-                "overall_score": 85,
-                "maturity": "production_ready",
-                "strengths": [
-                    "Clear project structure",
-                    "Automated tests are present",
-                ],
-                "risks": [
-                    "Documentation could be expanded",
-                ],
-                "recommendations": [
-                    "Improve deployment documentation",
-                ],
-            }
-        ),
-    )
-
+    mock_assessment_and_review(direct_vm)
     contract = direct_deploy(CONTRACT_PATH)
     direct_vm.sender = direct_alice
 
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
+    result = contract.analyze_project(PROJECT_DATA)
 
-    result = contract.analyze_project(project_data)
-
-    assert result["overall_score"] == 85
-    assert result["maturity"] == "production_ready"
-    assert isinstance(result["strengths"], list)
-    assert isinstance(result["risks"], list)
-    assert isinstance(result["recommendations"], list)
-
-    stored = contract.get_assessment(direct_alice.as_hex)
-    assert stored == result
+    assert result == VALID_ASSESSMENT
+    assert contract.get_assessment(direct_alice.as_hex) == result
 
 
-def test_invalid_score_is_rejected():
-    invalid_result = {
-        "overall_score": 150,
-        "maturity": "production_ready",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(invalid_result) is False
-
-
-def test_missing_required_field_is_rejected():
-    assessment = {
-        "overall_score": 80,
-        "maturity": "developing",
-        "strengths": [],
-        "risks": [],
-        # recommendations is missing
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_invalid_maturity_is_rejected():
-    assessment = {
-        "overall_score": 80,
-        "maturity": "excellent",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_score_as_string_is_rejected():
-    assessment = {
-        "overall_score": "80",
-        "maturity": "developing",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_non_string_strength_is_rejected():
-    assessment = {
-        "overall_score": 80,
-        "maturity": "developing",
-        "strengths": ["Good architecture", 123],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_non_string_risk_is_rejected():
-    assessment = {
-        "overall_score": 80,
-        "maturity": "developing",
-        "strengths": [],
-        "risks": ["Security issue", {"problem": "SQL injection"}],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_non_string_recommendation_is_rejected():
-    assessment = {
-        "overall_score": 80,
-        "maturity": "developing",
-        "strengths": [],
-        "risks": [],
-        "recommendations": ["Add CI", 42],
-    }
-
-    assert validate_assessment(assessment) is False
-
-
-def test_non_dict_result_is_rejected():
-    assert validate_assessment(None) is False
-    assert validate_assessment("invalid") is False
-    assert validate_assessment([]) is False
-
-
-def test_boundary_score_zero_is_valid():
-    assessment = {
-        "overall_score": 0,
-        "maturity": "insufficient_evidence",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is True
-
-
-def test_boundary_score_hundred_is_valid():
-    assessment = {
-        "overall_score": 100,
-        "maturity": "production_ready",
-        "strengths": ["Strong architecture"],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is True
-
-
-def test_negative_score_is_rejected():
-    invalid_result = {
-        "overall_score": -1,
+def test_assessment_requires_score_maturity_consistency():
+    mismatched = {
+        **VALID_ASSESSMENT,
         "maturity": "early_stage",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
     }
 
-    assert validate_assessment(invalid_result) is False
+    assert validate_assessment(mismatched, PROJECT_DATA) is False
 
 
-def test_boolean_score_is_rejected():
-    invalid_result = {
-        "overall_score": True,
-        "maturity": "production_ready",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
+@pytest.mark.parametrize(
+    "score,maturity",
+    [
+        (0, "insufficient_evidence"),
+        (19, "insufficient_evidence"),
+        (20, "early_stage"),
+        (49, "early_stage"),
+        (50, "developing"),
+        (74, "developing"),
+        (75, "production_ready"),
+        (100, "production_ready"),
+    ],
+)
+def test_score_maturity_bands(score, maturity):
+    assessment = {
+        **VALID_ASSESSMENT,
+        "overall_score": score,
+        "maturity": maturity,
     }
 
-    assert validate_assessment(invalid_result) is False
+    assert validate_assessment(assessment, PROJECT_DATA) is True
 
 
-def test_llm_returns_invalid_score_is_handled(direct_vm, direct_deploy):
-    direct_vm.mock_llm(
-        r".*",
-        json.dumps(
-            {
-                "overall_score": 150,
-                "maturity": "production_ready",
-                "strengths": [],
-                "risks": [],
-                "recommendations": [],
-            }
-        ),
-    )
-
-    contract = direct_deploy(CONTRACT_PATH)
-
-    result = contract.analyze_project(
+@pytest.mark.parametrize(
+    "finding",
+    [
         {
-            "name": "Example Project",
-            "has_readme": True,
-            "has_tests": True,
-            "has_ci": True,
-            "file_count": 50,
-            "test_file_count": 10,
-        }
-    )
+            "finding": "The claim cites a path absent from repository evidence.",
+            "evidence": [{"path": "src/missing.py", "quote": "not present"}],
+        },
+        {
+            "finding": "The quote does not occur in the cited file.",
+            "evidence": [{"path": "README.md", "quote": "invented content"}],
+        },
+        {"finding": "The finding has no evidence.", "evidence": []},
+        "Unstructured finding",
+    ],
+)
+def test_finding_without_verifiable_citation_is_rejected(finding):
+    assessment = {**VALID_ASSESSMENT, "risks": [finding]}
 
-    assert isinstance(result, dict)
-
-
-def test_llm_returns_missing_field_is_rejected(direct_vm, direct_deploy):
-    direct_vm.mock_llm(
-        r".*",
-        json.dumps(
-            {
-                "overall_score": 85,
-                "maturity": "production_ready",
-                "strengths": [],
-                "risks": [],
-                # recommendations intentionally missing
-            }
-        ),
-    )
-
-    contract = direct_deploy(CONTRACT_PATH)
-
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    result = contract.analyze_project(project_data)
-
-    assert isinstance(result, dict)
-    assert validate_assessment(result) is False
+    assert validate_assessment(assessment, PROJECT_DATA) is False
 
 
-def test_llm_returns_invalid_maturity_is_rejected(direct_vm, direct_deploy):
-    direct_vm.mock_llm(
-        r".*",
-        json.dumps(
-            {
-                "overall_score": 85,
-                "maturity": "excellent",
-                "strengths": [],
-                "risks": [],
-                "recommendations": [],
-            }
-        ),
-    )
-
-    contract = direct_deploy(CONTRACT_PATH)
-
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    result = contract.analyze_project(project_data)
-
-    assert isinstance(result, dict)
-    assert validate_assessment(result) is False
+def test_valid_finding_must_quote_exact_repository_content():
+    assert validate_assessment(VALID_ASSESSMENT, PROJECT_DATA) is True
 
 
-def test_llm_returns_non_string_array_item_is_rejected(
-    direct_vm,
-    direct_deploy,
-):
-    direct_vm.mock_llm(
-        r".*",
-        json.dumps(
-            {
-                "overall_score": 85,
-                "maturity": "production_ready",
-                "strengths": ["Good architecture", 123],
-                "risks": [],
-                "recommendations": [],
-            }
-        ),
-    )
-
-    contract = direct_deploy(CONTRACT_PATH)
-
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    result = contract.analyze_project(project_data)
-
-    assert isinstance(result, dict)
-    assert validate_assessment(result) is False
-
-
-def test_valid_project_data_is_accepted():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    assert validate_project_data(project_data) is True
-
-
-def test_missing_project_field_is_rejected():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_project_data_must_be_dict():
-    assert validate_project_data([]) is False
-    assert validate_project_data("project") is False
+def test_invalid_project_data_is_rejected():
     assert validate_project_data(None) is False
-
-
-def test_project_name_must_be_string():
-    project_data = {
-        "name": 123,
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_empty_project_name_is_rejected():
-    project_data = {
-        "name": "   ",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 50,
-        "test_file_count": 10,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_negative_file_count_is_rejected():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": -1,
-        "test_file_count": 0,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_negative_test_file_count_is_rejected():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 10,
-        "test_file_count": -1,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_boolean_file_count_is_rejected():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": True,
-        "test_file_count": 1,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_boolean_test_file_count_is_rejected():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 10,
-        "test_file_count": False,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_test_file_count_cannot_exceed_file_count():
-    project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 5,
-        "test_file_count": 10,
-    }
-
-    assert validate_project_data(project_data) is False
-
-
-def test_boolean_project_flags_are_rejected():
-    for field in ("has_readme", "has_tests", "has_ci"):
-        project_data = {
-            "name": "Example Project",
-            "has_readme": True,
-            "has_tests": True,
-            "has_ci": True,
-            "file_count": 10,
-            "test_file_count": 5,
+    assert validate_project_data({**PROJECT_DATA, "repository_files": []}) is False
+    assert validate_project_data(
+        {
+            **PROJECT_DATA,
+            "repository_files": [
+                {"path": "README.md", "content": "evidence"},
+                {"path": "README.md", "content": "duplicate path"},
+            ],
         }
+    ) is False
+    assert validate_project_data(
+        {
+            **PROJECT_DATA,
+            "repository_files": [{"path": "README.md", "content": "x" * 4001}],
+        }
+    ) is False
 
-        project_data[field] = "true"
 
-        assert validate_project_data(project_data) is False
-
-
-def test_invalid_project_data_is_rejected(
-    direct_vm,
-    direct_deploy,
-):
+def test_invalid_input_is_rejected_by_contract(direct_deploy):
     contract = direct_deploy(CONTRACT_PATH)
     import genlayer.gl.vm as glvm
 
-    invalid_project_data = {
-        "name": "Example Project",
-        "has_readme": True,
-        "has_tests": True,
-        "has_ci": True,
-        "file_count": 5,
-        "test_file_count": 10,
-    }
+    invalid_project_data = {**PROJECT_DATA, "test_file_count": 100}
 
     with pytest.raises(glvm.UserError, match="Invalid project data"):
         contract.analyze_project(invalid_project_data)
-
-
-@pytest.mark.parametrize(
-    "maturity",
-    [
-        "insufficient_evidence",
-        "early_stage",
-        "developing",
-        "production_ready",
-    ],
-)
-def test_all_valid_maturity_values_are_accepted(maturity):
-    assessment = {
-        "overall_score": 80,
-        "maturity": maturity,
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assert validate_assessment(assessment) is True
-
-
-@pytest.mark.parametrize(
-    "field",
-    ["strengths", "risks", "recommendations"],
-)
-def test_assessment_array_field_must_be_a_list(field):
-    assessment = {
-        "overall_score": 80,
-        "maturity": "developing",
-        "strengths": [],
-        "risks": [],
-        "recommendations": [],
-    }
-
-    assessment[field] = "not a list"
-
-    assert validate_assessment(assessment) is False

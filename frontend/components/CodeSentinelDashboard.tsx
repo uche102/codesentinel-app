@@ -20,6 +20,7 @@ import { Label } from "./ui/label";
 import { useAnalyzeProject } from "@/lib/hooks/useCodeSentinel";
 import type { FeePresetLevel } from "@/lib/genlayer/fees";
 import type {
+  AssessmentFinding,
   GithubRepoAnalysis,
   ProjectAssessment,
   ProjectData,
@@ -51,6 +52,7 @@ function createEmptyProjectForm(): ProjectData {
     has_ci: false,
     file_count: 0,
     test_file_count: 0,
+    repository_files: [],
   };
 }
 
@@ -85,6 +87,10 @@ function validateProjectData(projectData: ProjectData): string | null {
     return "Test file count cannot exceed total file count.";
   }
 
+  if (projectData.repository_files.length === 0) {
+    return "Inspect a GitHub repository to attach source evidence before assessment.";
+  }
+
   return null;
 }
 
@@ -94,7 +100,7 @@ function AssessmentList({
   icon: Icon,
 }: {
   title: string;
-  items: string[];
+  items: AssessmentFinding[];
   icon: typeof CheckCircle2;
 }) {
   return (
@@ -114,7 +120,17 @@ function AssessmentList({
               key={`${title}-${index}`}
               className="rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-sm leading-6 text-slate-200/90"
             >
-              {item}
+              <p>{item.finding}</p>
+              <ul className="mt-2 space-y-1 border-l border-cyan-400/20 pl-3 text-xs text-slate-400">
+                {item.evidence.map((citation, citationIndex) => (
+                  <li key={`${citation.path}-${citationIndex}`}>
+                    <span className="font-mono text-cyan-200/80">
+                      {citation.path}
+                    </span>
+                    : "{citation.quote}"
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
@@ -334,9 +350,24 @@ export function CodeSentinelDashboard() {
     const sample: ProjectAssessment = {
       overall_score: 85,
       maturity: "production_ready",
-      strengths: ["Clear project structure", "Automated tests are present"],
-      risks: ["Documentation could be expanded"],
-      recommendations: ["Improve deployment documentation"],
+      strengths: [
+        {
+          finding: "The project contains automated tests.",
+          evidence: [{ path: "tests/example.test.ts", quote: "describe(" }],
+        },
+      ],
+      risks: [
+        {
+          finding: "The README does not document deployment.",
+          evidence: [{ path: "README.md", quote: "# Example Project" }],
+        },
+      ],
+      recommendations: [
+        {
+          finding: "Document the deployment process.",
+          evidence: [{ path: "README.md", quote: "# Example Project" }],
+        },
+      ],
     };
 
     setAssessment(sample);
@@ -448,7 +479,8 @@ export function CodeSentinelDashboard() {
                 </div>
                 {repoSummary ? (
                   <p className="text-xs leading-5 text-slate-400">
-                    Inspected {repoSummary.inspectedFiles} files on{" "}
+                    Inspected {repoSummary.inspectedFiles} files and attached{" "}
+                    {repoSummary.evidenceFiles} source excerpts on{" "}
                     {repoSummary.defaultBranch}
                     {repoSummary.treeTruncated
                       ? "; GitHub truncated the tree"
