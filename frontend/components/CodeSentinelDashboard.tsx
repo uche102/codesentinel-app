@@ -6,9 +6,13 @@ import {
   Bot,
   CheckCircle2,
   ClipboardCheck,
+  ChevronDown,
   FileCode2,
+  FileText,
   Github,
+  GitBranch,
   Loader2,
+  ScanSearch,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -103,31 +107,41 @@ function AssessmentList({
   items: AssessmentFinding[];
   icon: typeof CheckCircle2;
 }) {
+  const listLabel = title.toLowerCase();
+
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 shadow-[0_20px_80px_rgba(15,23,42,0.45)] backdrop-blur-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-fuchsia-400/25 bg-fuchsia-500/10">
-          <Icon className="h-4 w-4 text-fuchsia-200" />
+    <section className="flex min-w-0 flex-col rounded-2xl border border-white/[0.07] bg-[#0d121c] p-4 transition-colors hover:border-white/[0.12]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07]">
+            <Icon className="h-4 w-4 text-cyan-100" />
+          </div>
+          <h3 className="truncate text-sm font-semibold text-white">{title}</h3>
         </div>
-        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/75">
-          {title}
-        </h3>
+        <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-xs tabular-nums text-slate-400">
+          {items.length}
+        </span>
       </div>
       {items.length ? (
-        <ul className="space-y-2.5">
+        <ul className="flex-1 space-y-3">
           {items.map((item, index) => (
             <li
               key={`${title}-${index}`}
-              className="rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-sm leading-6 text-slate-200/90"
+              className="rounded-xl border border-white/[0.06] bg-black/20 p-3"
             >
-              <p>{item.finding}</p>
-              <ul className="mt-2 space-y-1 border-l border-cyan-400/20 pl-3 text-xs text-slate-400">
+              <p className="text-sm leading-6 text-slate-200">{item.finding}</p>
+              <ul className="mt-3 space-y-2">
                 {item.evidence.map((citation, citationIndex) => (
-                  <li key={`${citation.path}-${citationIndex}`}>
-                    <span className="font-mono text-cyan-200/80">
+                  <li
+                    key={`${citation.path}-${citationIndex}`}
+                    className="min-w-0 rounded-lg border-l-2 border-cyan-300/40 bg-cyan-300/[0.035] px-3 py-2"
+                  >
+                    <p className="truncate font-mono text-[11px] text-cyan-100/80">
                       {citation.path}
-                    </span>
-                    : "{citation.quote}"
+                    </p>
+                    <p className="mt-1 break-words text-xs leading-5 text-slate-400">
+                      “{citation.quote}”
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -135,7 +149,11 @@ function AssessmentList({
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-slate-400">No items returned.</p>
+        <div className="flex flex-1 items-center rounded-xl border border-dashed border-white/[0.08] px-3 py-4">
+          <p className="text-sm leading-5 text-slate-500">
+            No {listLabel} supported by the submitted evidence.
+          </p>
+        </div>
       )}
     </section>
   );
@@ -148,52 +166,107 @@ function AssessmentResult({
 }) {
   if (!assessment) {
     return (
-      <div className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-[#0a0d16]/80 p-8 text-center shadow-[0_28px_80px_rgba(15,23,42,0.35)]">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/25 bg-cyan-500/10 ring-1 ring-cyan-400/15">
-          <Bot className="h-7 w-7 text-cyan-200" />
+      <div className="flex min-h-[500px] flex-col items-center justify-center rounded-3xl border border-white/[0.07] bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.07),transparent_55%),#0a0e16] p-8 text-center">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.06]">
+          <Bot className="h-7 w-7 text-cyan-100" />
         </div>
-        <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
-          Awaiting assessment
-        </h2>
-        <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">
-          Submit repository evidence to receive a validator-checked maturity
-          score, risks, strengths, and next engineering recommendations.
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-100/70">
+          Assessment workspace
         </p>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white">
+          Your report will appear here
+        </h2>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">
+          Inspect a public GitHub repository, then run an evidence-backed
+          assessment to see its maturity score, cited findings, and next steps.
+        </p>
+        <div className="mt-8 grid w-full max-w-sm grid-cols-3 gap-2 text-left">
+          {[
+            { number: "01", label: "Inspect", icon: ScanSearch },
+            { number: "02", label: "Cite", icon: FileText },
+            { number: "03", label: "Verify", icon: ShieldCheck },
+          ].map(({ number, label, icon: StepIcon }) => (
+            <div
+              key={number}
+              className="rounded-xl border border-white/[0.06] bg-black/20 p-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] text-slate-600">
+                  {number}
+                </span>
+                <StepIcon className="h-3.5 w-3.5 text-cyan-100/60" />
+              </div>
+              <p className="mt-3 text-xs font-medium text-slate-300">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-white/10 bg-[#0c1018]/90 p-5 shadow-[0_24px_80px_rgba(9,14,24,0.45)]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-              Overall score
-            </p>
-            <div className="mt-2 flex items-end gap-2">
-              <span className="text-5xl font-bold leading-none text-white">
-                {assessment.overall_score}
-              </span>
-              <span className="pb-1 text-sm text-slate-400">/ 100</span>
+      <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[radial-gradient(ellipse_at_85%_0%,rgba(34,211,238,0.11),transparent_36%),#0c111a]">
+        <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+          <div className="flex items-center gap-5">
+            <div
+              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full p-[1px]"
+              style={{
+                background: `conic-gradient(#67e8f9 ${assessment.overall_score}%, rgba(255,255,255,0.08) 0)`,
+              }}
+            >
+              <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#0c111a]">
+                <span className="text-3xl font-semibold tabular-nums tracking-tight text-white">
+                  {assessment.overall_score}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  score
+                </span>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-300">
+                Repository maturity
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Based on cited repository evidence
+              </p>
+              <Badge
+                className={`mt-3 ${maturityClassName[assessment.maturity]}`}
+                variant="outline"
+              >
+                {maturityLabels[assessment.maturity]}
+              </Badge>
             </div>
           </div>
-          <Badge
-            className={maturityClassName[assessment.maturity]}
-            variant="outline"
-          >
-            {maturityLabels[assessment.maturity]}
-          </Badge>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            {[
+              { label: "Strengths", value: assessment.strengths.length },
+              { label: "Risks", value: assessment.risks.length },
+              { label: "Next steps", value: assessment.recommendations.length },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="min-w-[96px] rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5"
+              >
+                <p className="text-lg font-semibold tabular-nums text-white">
+                  {item.value}
+                </p>
+                <p className="text-[11px] text-slate-500">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-white/8">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-fuchsia-400 shadow-[0_0_18px_rgba(59,130,246,0.5)]"
-            style={{ width: `${assessment.overall_score}%` }}
-          />
+        <div className="flex items-center gap-3 border-t border-white/[0.06] px-5 py-3 sm:px-7">
+          <ShieldCheck className="h-4 w-4 shrink-0 text-cyan-100/70" />
+          <p className="text-xs leading-5 text-slate-400">
+            Findings are checked against source excerpts and independently
+            reviewed by validators.
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-3 xl:grid-cols-3">
         <AssessmentList
           title="Strengths"
           items={assessment.strengths}
@@ -375,19 +448,19 @@ export function CodeSentinelDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.20),transparent_25%),radial-gradient(circle_at_right,rgba(34,211,238,0.14),transparent_25%),linear-gradient(180deg,#05070d_0%,#0b1018_28%,#05070d_100%)] text-white">
-      <header className="border-b border-white/10 bg-black/35 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 md:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_50%_-15%,rgba(31,107,128,0.18),transparent_48%),linear-gradient(180deg,#080b11_0%,#090d14_45%,#070a10_100%)] text-white">
+      <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#080b11]/85 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-4 px-4 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10 shadow-[0_0_30px_rgba(34,211,238,0.18)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07]">
               <ShieldCheck className="h-5 w-5 text-cyan-200" />
             </div>
             <div>
-              <p className="text-lg font-semibold tracking-[-0.04em]">
-                CodeSentinel
+              <p className="text-base font-semibold tracking-[-0.03em]">
+                Code<span className="text-cyan-100">Sentinel</span>
               </p>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                GenLayer technical maturity oracle
+              <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                Repository intelligence
               </p>
             </div>
           </div>
@@ -395,37 +468,65 @@ export function CodeSentinelDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
-        <section className="mb-6 overflow-hidden rounded-[28px] border border-white/10 bg-[#0a0f18]/80 p-6 shadow-[0_32px_80px_rgba(15,23,42,0.4)] ring-1 ring-white/5 md:p-8">
-          <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <Badge className="border-cyan-400/30 bg-cyan-500/10 text-cyan-100">
-                Builder trust layer
-              </Badge>
-              <h1 className="mt-4 text-4xl font-semibold tracking-[-0.07em] text-white md:text-5xl">
-                Assess repository maturity before launch.
-              </h1>
-              <p className="mt-4 max-w-xl text-base leading-7 text-slate-300">
-                Evaluate project readiness with repository evidence,
-                validator-style scoring, and GenLayer-native risk intelligence.
+      <main className="mx-auto max-w-[1440px] px-4 pb-12 pt-8 md:px-8 md:pt-10">
+        <section className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div className="max-w-3xl">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="h-px w-6 bg-cyan-200/60" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100/70">
+                GenLayer · Evidence-first review
               </p>
             </div>
-            <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-sm text-slate-200">
-              <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-              Live validator checks
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-[-0.055em] text-white md:text-5xl">
+              Know what your repository{" "}
+              <span className="text-slate-400">is ready for.</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400 md:text-base">
+              Turn source files into a maturity report with traceable findings,
+              independent validator review, and practical next steps.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-300/[0.08]">
+              <ShieldCheck className="h-4 w-4 text-emerald-200" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-200">
+                Validator reviewed
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Claims must cite repository files
+              </p>
             </div>
           </div>
+        </section>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mb-6 rounded-2xl border border-white/[0.07] bg-[#0c111a] p-4 md:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-cyan-100/70" />
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-300">
+                Repository signals
+              </p>
+            </div>
+            {repoSummary ? (
+              <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-2.5 py-1 text-[10px] font-medium text-emerald-100/80">
+                {repoSummary.evidenceFiles} evidence files attached
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-600">
+                Populated after inspection
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
             {evidenceSummary.map((item) => (
               <div
                 key={item.label}
-                className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(19,25,38,0.9),rgba(8,10,18,0.8))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.05] bg-black/20 px-3 py-2.5"
               >
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                  {item.label}
-                </p>
-                <p className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-white">
+                <p className="text-[11px] text-slate-500">{item.label}</p>
+                <p className="truncate text-xs font-medium text-slate-200">
                   {item.value}
                 </p>
               </div>
@@ -433,38 +534,57 @@ export function CodeSentinelDashboard() {
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-          <section className="rounded-[28px] border border-white/10 bg-[#0a0d16]/85 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.45)] backdrop-blur-sm md:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-                  Project evidence
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">
-                  Repository signal input
-                </h2>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-fuchsia-400/25 bg-fuchsia-500/10">
-                <FileCode2 className="h-5 w-5 text-fuchsia-200" />
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-cyan-300/15 bg-cyan-300/[0.06] font-mono text-[10px] text-cyan-100">
+              01
+            </span>
+            <h2 className="text-sm font-semibold text-slate-200">
+              Inspect and assess
+            </h2>
+          </div>
+          <p className="hidden text-xs text-slate-600 sm:block">
+            Public GitHub repositories
+          </p>
+        </div>
+
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]">
+          <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c111a]">
+            <div className="border-b border-white/[0.06] p-5 md:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06]">
+                  <FileCode2 className="h-4 w-4 text-cyan-100" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-white">
+                    Project evidence
+                  </h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Inspect a repository to attach verifiable source excerpts.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5 p-5 md:p-6">
               <div className="space-y-2">
-                <Label htmlFor="repo_url" className="text-slate-200">
+                <Label htmlFor="repo_url" className="text-xs font-medium text-slate-300">
                   GitHub repository
                 </Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="repo_url"
-                    value={repoUrl}
-                    onChange={(event) => setRepoUrl(event.target.value)}
-                    placeholder="https://github.com/owner/repo"
-                    className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-white placeholder:text-slate-500"
-                  />
+                  <div className="relative min-w-0 flex-1">
+                    <Github className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                    <Input
+                      id="repo_url"
+                      value={repoUrl}
+                      onChange={(event) => setRepoUrl(event.target.value)}
+                      placeholder="github.com/owner/repo"
+                      className="h-11 rounded-xl border-white/[0.08] bg-black/25 pl-9 text-sm text-white placeholder:text-slate-600 focus-visible:border-cyan-300/40 focus-visible:ring-cyan-300/15"
+                    />
+                  </div>
                   <Button
-                    className="h-11 shrink-0 rounded-xl border-white/10 bg-white/[0.03] text-slate-100 hover:bg-white/[0.06]"
-                    disabled={isInspectingRepo}
+                    className="h-11 shrink-0 rounded-xl border-white/[0.09] bg-white/[0.04] px-3 text-slate-100 hover:border-cyan-200/20 hover:bg-cyan-200/[0.06]"
+                    disabled={isInspectingRepo || isAnalyzing}
                     onClick={handleInspectGithub}
                     type="button"
                     variant="outline"
@@ -472,26 +592,59 @@ export function CodeSentinelDashboard() {
                     {isInspectingRepo ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Github className="h-4 w-4" />
+                      <ScanSearch className="h-4 w-4" />
                     )}
-                    Inspect
+                    <span className="hidden sm:inline">
+                      {isInspectingRepo ? "Inspecting" : "Inspect"}
+                    </span>
                   </Button>
                 </div>
                 {repoSummary ? (
-                  <p className="text-xs leading-5 text-slate-400">
-                    Inspected {repoSummary.inspectedFiles} files and attached{" "}
-                    {repoSummary.evidenceFiles} source excerpts on{" "}
+                  <p className="flex items-center gap-1.5 text-[11px] leading-5 text-slate-500">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-300/70" />
+                    Inspected {repoSummary.inspectedFiles} files on{" "}
                     {repoSummary.defaultBranch}
-                    {repoSummary.treeTruncated
-                      ? "; GitHub truncated the tree"
-                      : ""}
-                    .
+                    {repoSummary.treeTruncated ? " · tree truncated" : ""}
                   </p>
-                ) : null}
+                ) : (
+                  <p className="text-[11px] leading-5 text-slate-600">
+                    We’ll inspect the repository tree and select relevant files.
+                  </p>
+                )}
               </div>
 
+              {repoSummary && form.repository_files.length > 0 ? (
+                <details className="group rounded-xl border border-white/[0.07] bg-black/15">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-xs text-slate-300 marker:hidden">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5 text-cyan-100/70" />
+                      Evidence excerpts
+                      <span className="text-slate-600">
+                        ({form.repository_files.length})
+                      </span>
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-600 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <ul className="max-h-48 space-y-2 overflow-y-auto border-t border-white/[0.06] p-3">
+                    {form.repository_files.map((file) => (
+                      <li
+                        key={file.path}
+                        className="rounded-lg border border-white/[0.05] bg-white/[0.02] p-2.5"
+                      >
+                        <p className="truncate font-mono text-[10px] text-cyan-100/75">
+                          {file.path}
+                        </p>
+                        <p className="mt-1 line-clamp-2 break-all font-mono text-[10px] leading-4 text-slate-500">
+                          {file.content}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-slate-200">
+                <Label htmlFor="name" className="text-xs font-medium text-slate-300">
                   Project name
                 </Label>
                 <Input
@@ -499,14 +652,14 @@ export function CodeSentinelDashboard() {
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
                   placeholder="Example: payments-api"
-                  className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-white placeholder:text-slate-500"
+                  className="h-11 rounded-xl border-white/[0.08] bg-black/25 text-sm text-white placeholder:text-slate-600 focus-visible:border-cyan-300/40 focus-visible:ring-cyan-300/15"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="file_count" className="text-slate-200">
-                    Files
+                  <Label htmlFor="file_count" className="text-xs font-medium text-slate-300">
+                    Total files
                   </Label>
                   <Input
                     id="file_count"
@@ -516,11 +669,11 @@ export function CodeSentinelDashboard() {
                     onChange={(event) =>
                       updateField("file_count", Number(event.target.value))
                     }
-                    className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-white"
+                    className="h-10 rounded-xl border-white/[0.08] bg-black/25 text-sm text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="test_file_count" className="text-slate-200">
+                  <Label htmlFor="test_file_count" className="text-xs font-medium text-slate-300">
                     Test files
                   </Label>
                   <Input
@@ -531,12 +684,12 @@ export function CodeSentinelDashboard() {
                     onChange={(event) =>
                       updateField("test_file_count", Number(event.target.value))
                     }
-                    className="h-11 rounded-xl border-white/10 bg-white/[0.03] text-white"
+                    className="h-10 rounded-xl border-white/[0.08] bg-black/25 text-sm text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid gap-3">
+              <div className="grid gap-2 sm:grid-cols-3">
                 {(
                   [
                     ["has_readme", "README"],
@@ -546,23 +699,30 @@ export function CodeSentinelDashboard() {
                 ).map(([field, label]) => (
                   <label
                     key={field}
-                    className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-3 text-sm text-slate-200 transition-colors hover:border-cyan-400/30 hover:bg-cyan-500/5"
+                    className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5 text-xs text-slate-300 transition-colors hover:border-cyan-200/20"
                   >
-                    <span>{label}</span>
                     <input
                       checked={form[field]}
-                      className="h-4 w-4 accent-cyan-300"
+                      className="h-3.5 w-3.5 accent-cyan-300"
                       type="checkbox"
                       onChange={(event) =>
                         updateField(field, event.target.checked)
                       }
                     />
+                    <span>{label}</span>
                   </label>
                 ))}
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-slate-200">Fee preset</Label>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-slate-300">
+                    Transaction fee
+                  </Label>
+                  <span className="text-[10px] text-slate-600">
+                    Choose a comfort level
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(
                     [
@@ -574,11 +734,12 @@ export function CodeSentinelDashboard() {
                     <button
                       key={option.value}
                       type="button"
+                      aria-pressed={feePresetLevel === option.value}
                       onClick={() => setFeePresetLevel(option.value)}
-                      className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all ${
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/50 ${
                         feePresetLevel === option.value
-                          ? "border-cyan-300/60 bg-cyan-500/10 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.15)]"
-                          : "border-white/10 bg-white/[0.02] text-slate-300 hover:border-white/20 hover:bg-white/[0.04]"
+                          ? "border-cyan-200/30 bg-cyan-200/[0.08] text-cyan-50"
+                          : "border-white/[0.07] bg-black/15 text-slate-400 hover:bg-white/[0.04]"
                       }`}
                     >
                       {option.label}
@@ -588,20 +749,20 @@ export function CodeSentinelDashboard() {
               </div>
 
               <Button
-                className="h-12 w-full rounded-xl bg-[linear-gradient(135deg,#8b5cf6_0%,#a855f7_35%,#22d3ee_100%)] text-white shadow-[0_18px_42px_rgba(124,58,237,0.35)] hover:brightness-110"
-                disabled={isAnalyzing}
+                className="h-12 w-full rounded-xl bg-cyan-200 text-[#071016] shadow-[0_8px_24px_rgba(34,211,238,0.12)] transition-all hover:bg-cyan-100 disabled:bg-slate-700 disabled:text-slate-400"
+                disabled={isAnalyzing || isInspectingRepo}
                 type="submit"
                 variant="default"
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Analyzing
+                    Waiting for validator review
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    Run Assessment
+                    Run assessment
                   </>
                 )}
               </Button>
@@ -609,16 +770,16 @@ export function CodeSentinelDashboard() {
                 <Button
                   type="button"
                   onClick={simulateAssessment}
-                  className="mt-2 h-10 w-full rounded-xl border-white/10 bg-white/[0.03] text-white hover:bg-white/[0.05]"
+                  className="h-9 w-full rounded-xl border-white/[0.07] bg-transparent text-xs text-slate-500 hover:bg-white/[0.03] hover:text-slate-300"
                   variant="outline"
                 >
-                  Simulate Assessment
+                  Preview sample report
                 </Button>
               )}
             </form>
           </section>
 
-          <section className="space-y-6">
+          <section aria-live="polite" className="min-w-0">
             <AssessmentResult assessment={assessment} />
           </section>
         </div>
